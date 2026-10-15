@@ -25,7 +25,20 @@ test('freehandMultipleStrokesClearAndPresetSelection', async ({ page }) => {
     'aria-pressed',
     'true',
   );
-  await page.getByRole('button', { name: '✎ Dibujar', exact: true }).click();
+  await page.getByRole('button', { name: 'Limpiar lienzo', exact: true }).click();
+  await expect(page.getByText('Dibujo libre · 0 trazos')).toBeVisible();
+  await expect
+    .poll(() =>
+      page.locator('canvas[data-ready]').evaluate((canvas: HTMLCanvasElement) => {
+        const pixels = canvas
+          .getContext('2d')!
+          .getImageData(0, 0, canvas.width, canvas.height).data;
+        for (let i = 0; i < pixels.length; i += 4)
+          if (pixels[i] > 120 || pixels[i + 1] > 120 || pixels[i + 2] > 120) return true;
+        return false;
+      }),
+    )
+    .toBe(false);
   const b = (await page.locator('canvas[data-ready]').boundingBox())!;
   const stroke = async (x: number, y: number) => {
     await page.mouse.move(b.x + b.width * x, b.y + b.height * y);
@@ -75,13 +88,19 @@ test('freehandControlsFitMobileAndEmptyDrawingDoesNotTrapNavigation', async ({ p
     await page.setViewportSize(viewport);
     const toggle = page.getByRole('button', { name: 'Mostrar u ocultar inspector' });
     if ((await toggle.getAttribute('aria-expanded')) === 'true') await toggle.click();
-    await page.getByRole('button', { name: '✎ Dibujar', exact: true }).click();
+    await page.getByRole('button', { name: 'Limpiar lienzo', exact: true }).click();
     const panel = page.locator('.closure');
     const box = (await panel.boundingBox())!;
     const transport = (await page.locator('.transport').boundingBox())!;
     expect(box.x).toBeGreaterThanOrEqual(0);
     expect(box.x + box.width).toBeLessThanOrEqual(viewport.width);
     expect(box.y + box.height).toBeLessThanOrEqual(transport.y);
+    const tools = (await page.locator('.canvas-toolbar').boundingBox())!;
+    const fit = (await page
+      .getByRole('button', { name: 'Ajustar vista ⛶', exact: true })
+      .boundingBox())!;
+    expect(fit.y + fit.height).toBeLessThanOrEqual(tools.y + tools.height);
+    expect(tools.y + tools.height).toBeLessThan(transport.y);
     await expect(
       page.getByRole('button', { name: 'Limpiar y empezar de nuevo', exact: true }),
     ).toBeVisible();

@@ -1054,3 +1054,9 @@ canvas {
     overflow-y: auto;
   }
 }
+
+@media (max-width: 700px) {
+  .canvas-toolbar {
+    max-height: calc(100dvh - var(--chrome-top) - 112px);
+  }
+}

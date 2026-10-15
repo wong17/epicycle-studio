@@ -22,7 +22,7 @@ En esta máquina hay un Node compatible local en `.tools/node_modules/node-win-x
 
 ## Crear
 
-- Elige un ejemplo o pulsa **Dibujar**. Puedes levantar el lápiz y continuar con varios trazos. Pulsa **Reproducir** o **Animar dibujo** para reconstruirlos; se unen por orden y se regresa por el recorrido para cerrar el ciclo. También puedes conectar los extremos con el botón de cierre.
+- Pulsa la goma **Limpiar lienzo** de la barra izquierda para quitar la figura y escribir o dibujar desde cero. También puedes elegir un ejemplo o pulsar **Dibujar**. Puedes levantar el lápiz y continuar con varios trazos. Pulsa **Reproducir** o **Animar dibujo** para reconstruirlos; se unen por orden y se regresa por el recorrido para cerrar el ciclo. También puedes conectar los extremos con el botón de cierre.
 - Durante el dibujo, la goma permite **Limpiar y empezar de nuevo**; cancelar recupera la figura anterior. Los ejemplos seleccionados quedan resaltados.
 - Pulsa **Reproducir** y cambia componentes, velocidad o posición temporal. La app siempre abre pausada.
 - **Componer** permite añadir círculos y editar radio, frecuencia, fase y centro. En 3D también permite editar su plano y normal.

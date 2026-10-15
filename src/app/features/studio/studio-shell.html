@@ -336,10 +336,19 @@
               data-tooltip="✎ Dibujar"
               aria-label="✎ Dibujar"
             >
-              <studio-icon name="edit" /><span class="sr-only">
-                ✎ <span>Dibujar</span></span
-              ></button
-            ><button
+              <studio-icon name="edit" /><span class="sr-only"> ✎ <span>Dibujar</span></span>
+            </button>
+            <button
+              (click)="clearDrawing()"
+              [disabled]="store.busy() || recording()"
+              class="icon-button"
+              title="Limpiar lienzo y dibujar desde cero"
+              data-tooltip="Limpiar lienzo y dibujar desde cero"
+              aria-label="Limpiar lienzo"
+            >
+              <studio-icon name="erase" />
+            </button>
+            <button
               [class.selected]="tool() === 'pan'"
               (click)="chooseTool('pan')"
               class="icon-button"
