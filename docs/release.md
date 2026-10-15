@@ -6,13 +6,13 @@
 
 El despliegue en `epicycle-studio.josuewong797.workers.dev` usa Workers con archivos estáticos. `wrangler.jsonc` fija la raíz en `dist/epicycle-studio/browser` y habilita el fallback SPA para las rutas Angular. El comando de despliegue del panel es `npx wrangler deploy`; Wrangler ejecuta `npm run build` mediante `build.command`, incluso si no hay un comando de build separado en el panel. Si el panel también ejecuta `npm run build`, el build se repetirá; ese paso separado puede dejarse vacío.
 
-La autodetección anterior seleccionaba `dist/`, por lo que publicaba `/epicycle-studio/browser/index.html` y la raíz devolvía 404. Mantener `wrangler.jsonc` en Git evita depender de esa autodetección. Las instrucciones de Pages siguen siendo válidas para carga manual.
+La autodetección anterior seleccionaba `dist/`, por lo que publicaba `/epicycle-studio/browser/index.html` y la raíz devolvía 404. Mantener `wrangler.jsonc` en Git evita depender de esa autodetección. Las instrucciones de Pages siguen siendo válidas para carga manual. No añadir la regla `/* /index.html 200`: Workers la rechaza como bucle infinito (error 100324).
 
 ## Carga manual
 
 1. En el panel de Cloudflare, abre **Workers & Pages**, crea una aplicación de **Pages** y elige la opción de cargar archivos precompilados (Direct Upload).
 2. Selecciona `artifacts/epicycle-studio-cloudflare-pages.zip`, o arrastra la carpeta `dist/epicycle-studio/browser`.
-3. El ZIP contiene `index.html`, `_headers`, `_redirects`, favicon, licencias de terceros y archivos con hash directamente en su raíz. No subas el repositorio ni la carpeta `dist` superior.
+3. El ZIP contiene `index.html`, `_headers`, favicon, licencias de terceros y archivos con hash directamente en su raíz. No subas el repositorio ni la carpeta `dist` superior.
 4. Despliega y realiza las comprobaciones HTTPS de esta guía desde la URL que te entregue Pages.
 
 Cloudflare admite una carpeta o un ZIP para la carga manual: [documentación oficial de Direct Upload](https://developers.cloudflare.com/pages/get-started/direct-upload/).
@@ -30,7 +30,7 @@ npm run test:e2e
 
 Salida comprobada: `dist/epicycle-studio/browser`. Publicar sólo esa carpeta; no incluir `.tools`, `.work`, fuentes, capturas de pruebas ni datos locales. El dominio matemático y archivos JSON no contienen credenciales ni requieren backend.
 
-En Cloudflare Pages: comando `npm run build`, directorio `dist/epicycle-studio/browser`, Node 24.15.0 compatible. El build incluye `_redirects` para SPA y `_headers`. La política CSP está en modo reporte; probarla en el alojamiento antes de imponerla. Los estilos Angular necesitan su política correspondiente. Workers se sirven como JavaScript y los exportadores se cargan por separado.
+En Cloudflare Pages: comando `npm run build`, directorio `dist/epicycle-studio/browser`, Node 24.15.0 compatible. El build incluye `_headers` y no genera `_redirects`: Workers utiliza `assets.not_found_handling = "single-page-application"`; Pages utiliza su fallback SPA nativo al no existir un `404.html`. La política CSP está en modo reporte; probarla en el alojamiento antes de imponerla. Los estilos Angular necesitan su política correspondiente. Workers se sirven como JavaScript y los exportadores se cargan por separado.
 
 La suite local sirve HTTP real con el mismo artefacto. Las rutas /studio/2d, /studio/3d y /learn deben abrir directamente. Assets inexistentes con extensión devuelven 404 en la preview; no se les entrega HTML.
 

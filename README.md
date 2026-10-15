@@ -54,6 +54,6 @@ La suite de navegador sirve el build real por HTTP. Chromium, Firefox y WebKit s
 
 ## Subir a Cloudflare Pages
 
-El ZIP listo para carga manual está en `artifacts/epicycle-studio-cloudflare-pages.zip`. También se puede subir directamente la carpeta `dist/epicycle-studio/browser`. El archivo `index.html` y las reglas `_headers`/`_redirects` quedan en la raíz del ZIP. La subida la realiza el usuario; no requiere backend.
+El ZIP listo para carga manual está en `artifacts/epicycle-studio-cloudflare-pages.zip`. También se puede subir directamente la carpeta `dist/epicycle-studio/browser`. El archivo `index.html` y las reglas `_headers` quedan en la raíz del ZIP. La subida la realiza el usuario; no requiere backend.
 
 Para reconstruir: `npm ci` y `npm run build`. Para integración Git en Pages: comando `npm run build`, salida `dist/epicycle-studio/browser`, Node indicado en `.nvmrc`. Ver [instrucciones de publicación y comprobaciones HTTPS](docs/release.md).
