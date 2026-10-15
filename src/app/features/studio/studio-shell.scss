@@ -514,6 +514,7 @@ h1 {
 .calculation,
 .canvas-hint,
 .closure {
+  position: absolute;
   z-index: 4;
   left: 88px;
   right: auto;
@@ -705,6 +706,9 @@ h1 {
   }
   .closure {
     z-index: 8;
+  }
+  .studio:not(.inspector-closed) .closure {
+    display: none;
   }
   .notice {
     top: calc(var(--header-height) + 8px);

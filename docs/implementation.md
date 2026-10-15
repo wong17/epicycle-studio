@@ -43,7 +43,7 @@ Paleta: tinta #101819, superficie #172223, líneas #344344, marfil #f1f3e8, áci
 Tipografía: Georgia en títulos editoriales; sistema sans en controles; Consolas para magnitudes.
 Firma: gran trayectoria ácida sobre un papel milimetrado oscuro, con órbitas finas y etiquetas de fase.
 Layout: barra editorial y herramientas compactas; canvas protagonista e inspector derecho; transporte inferior siempre visible. Móvil: canvas, transporte y controles apilados.
-Acciones primarias: reproducir en reposo, confirmar cierre al dibujar. Errores explican una recuperación sin perder el documento válido.
+Acciones primarias: reproducir en reposo o finalizar y animar el dibujo actual. Errores explican una recuperación sin perder el documento válido.
 Motion funcional de 160 ms, sin decoraciones que compitan con la matemática; iniciar siempre pausado.
 
 ## Resoluciones durante implementación
@@ -96,7 +96,7 @@ Solicitud: tema oscuro permanente con acento #d4f477, lienzo completo 2D/3D y co
 - Herramientas izquierdas, inspector derecho y reproducción inferior plegables. Las secciones del inspector se contraen con details/summary nativos.
 - En móvil el inspector empieza cerrado; al abrir ocupa como máximo 42 % de la altura. El lienzo conserva el tamaño completo, sin desplazamiento de página.
 - Iconos SVG locales reutilizables, sin dependencias ni recursos nuevos. Tooltips por hover/foco y nombres aria-label explícitos evitan que el texto generado del tooltip duplique el nombre accesible.
-- Escape cierra exportación y devuelve el foco; cerrar el inspector devuelve el foco a su botón. Las decisiones de cierre de trazos y confirmaciones conservan texto explícito.
+- Escape cierra exportación y devuelve el foco; cerrar el inspector devuelve el foco a su botón. Los controles de dibujo usan iconos con etiquetas accesibles y tooltips.
 - El rendering permanece oscuro incluso al abrir JSON antiguos con appearance.theme=light; la compatibilidad y los datos del archivo siguen aceptándose.
 - Tokens: fondo #101819, superficie #172122, bordes #344344, texto #eef1e6, secundario #a0b0a9, acento #d4f477. Tipografía del sistema para controles y Georgia sólo en identidad. Motion de controles 160 ms, desactivado con prefers-reduced-motion.
 - Skills aplicadas: brainstorming, frontend-design, dannaway-practical-ui, code-testing (regresión enfocada en el shell), systematic-debugging, verification-before-completion y requesting-code-review. Revisión estática independiente sin hallazgos importantes; no sustituye pruebas de navegador.
@@ -144,3 +144,9 @@ El video funciona en 2D y 3D con MediaRecorder según soporte: 1280×720, WebM o
 Skills aplicadas: Impeccable layout/craft-floor, brainstorming sobre el brief explícito, code-testing para regresiones del shell, systematic-debugging y verification-before-completion. Evaluación de layout y revisión estática independientes. Sin dependencias nuevas. Detector Impeccable: `[]`. El build conserva una advertencia de CSS del shell (13.65 KiB frente al umbral de aviso de 12 KiB; límite de error 16 KiB), sin ampliar presupuestos.
 
 Verificación final: 42 unitarios aprobados y 13 comprobaciones de navegador aprobadas (2 variantes táctiles omitidas fuera de Chromium), con video reproducido en Chromium/Firefox y fallback explícito en WebKit. Los detalles y las limitaciones de la suite general están registrados en docs/verification.md. La emulación táctil añade acciones tap, conservación de inspector y selección de cámara.
+
+## Dibujo libre y selección de ejemplos
+
+El borrador 2D acumula varios trazos sin reutilizar la geometría anterior. Reproducir analiza el borrador antes de iniciar el reloj; por defecto recorre el camino de vuelta para cerrar el ciclo. La animación conecta los trazos por orden: no hay separación matemática de movimientos con lápiz levantado. La goma vacía el borrador; cancelar recupera el documento anterior. Guardar o cambiar de dimensión confirma un borrador válido sin reproducirlo; un borrador vacío se descarta. Exportar queda deshabilitado hasta terminar el dibujo.
+
+La selección de ejemplos se deriva de la geometría, independientemente del nombre y de los identificadores de círculos manuales. Esto conserva el estado al importar y deshacer, y evita marcar un ejemplo cuando el usuario modifica sus puntos.

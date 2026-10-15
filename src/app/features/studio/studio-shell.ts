@@ -24,7 +24,7 @@ import {
 import { Vec2, Vec3 } from '../../domain/model';
 import { recordCycle, videoMime } from '../../infrastructure/transfer/video-export';
 import { explainError } from '../../domain/errors';
-import { resampleClosedPolyline } from '../../domain/curves/prepare-curve';
+import { prepareCurve, resampleClosedPolyline } from '../../domain/curves/prepare-curve';
 import { measureError, evaluate2D, evaluateManual3D } from '../../domain/fourier/math';
 import {
   download,
@@ -89,6 +89,10 @@ export class StudioShell implements AfterViewInit, OnDestroy {
   readonly modal = signal('');
   readonly preview = signal<Project | null>(null);
   readonly pending = signal<readonly Vec2[] | null>(null);
+  readonly drawing = signal(false);
+  readonly strokeCount = signal(0);
+  private strokes: Vec2[][] = [];
+  private drawingGeneration = 0;
   readonly share = signal('');
   readonly svgPaths = signal<{ name: string; d: string }[]>([]);
   depth = 0;
@@ -351,6 +355,8 @@ export class StudioShell implements AfterViewInit, OnDestroy {
     }
   }
   async save(): Promise<void> {
+    if (this.drawing() && !this.pending()) this.cancelDrawing();
+    if (this.drawing() && !(await this.finishDrawing())) return;
     this.captureView();
     await this.store.save();
   }
@@ -370,6 +376,7 @@ export class StudioShell implements AfterViewInit, OnDestroy {
     this.flat?.fit();
   }
   chooseTool(value: 'explore' | 'draw' | 'points' | 'pan'): void {
+    if (value === 'draw' && !this.drawing()) this.clearDrawing();
     this.tool.set(value);
     if (value === 'draw' || value === 'points') this.store.pause();
     if (this.spatial) {
@@ -381,8 +388,9 @@ export class StudioShell implements AfterViewInit, OnDestroy {
   pointerDown(event: PointerEvent): void {
     if (
       !this.flat ||
+      event.button !== 0 ||
       this.dimension !== 2 ||
-      this.pending() ||
+      this.store.busy() ||
       this.pointer !== null ||
       !(this.tool() === 'draw' || this.tool() === 'pan')
     )
@@ -390,7 +398,7 @@ export class StudioShell implements AfterViewInit, OnDestroy {
     this.pointer = event.pointerId;
     this.points = [];
     this.canvas.nativeElement.setPointerCapture(event.pointerId);
-    this.addPoint(event);
+    if (this.tool() === 'draw') this.addPoint(event);
   }
   pointerMove(event: PointerEvent): void {
     if (this.pointer !== event.pointerId) return;
@@ -414,38 +422,113 @@ export class StudioShell implements AfterViewInit, OnDestroy {
       const previous = this.flat.viewport.worldToScreen(last);
       if (Math.hypot(previous[0] - screen[0], previous[1] - screen[1]) < 1.5) return;
     }
-    if (this.points.length >= 10000) {
+    if ((this.pending()?.length ?? 0) + this.points.length >= 10000) {
       this.store.notice.set('Límite de 10 000 puntos alcanzado. Confirma el trazo.');
       this.pointerUp(event);
       return;
     }
     this.points.push(point);
-    this.flat.preview = this.points;
+    this.flat.previewStrokes = [...this.strokes, this.points];
   }
   pointerUp(event: PointerEvent): void {
     if (this.pointer !== event.pointerId) return;
     this.pointer = null;
     this.canvas.nativeElement.releasePointerCapture(event.pointerId);
     if (this.tool() === 'draw') {
-      if (this.points.length >= 3) this.pending.set([...this.points]);
-      else {
-        this.store.notice.set('Dibuja al menos tres puntos antes de confirmar.');
-        this.cancelDrawing();
-      }
+      if (this.points.length >= 3) this.strokes.push(this.points);
+      else this.store.notice.set('Haz un trazo un poco más largo. Puedes seguir dibujando.');
+      this.points = [];
+      this.updateDrawing();
+    }
+  }
+  private updateDrawing(): void {
+    this.strokeCount.set(this.strokes.length);
+    this.pending.set(this.strokes.length ? this.strokes.flat() : null);
+    if (this.flat) this.flat.previewStrokes = this.strokes;
+  }
+  interruptStroke(): void {
+    if (this.pointer !== null && this.canvas.nativeElement.hasPointerCapture(this.pointer))
+      this.canvas.nativeElement.releasePointerCapture(this.pointer);
+    this.pointer = null;
+    this.points = [];
+    this.updateDrawing();
+  }
+  clearDrawing(): void {
+    this.drawingGeneration++;
+    this.interruptStroke();
+    this.store.pause();
+    this.exportOpen.set(false);
+    this.strokes = [];
+    this.points = [];
+    this.pending.set(null);
+    this.strokeCount.set(0);
+    this.drawing.set(true);
+    this.tool.set('draw');
+    if (this.dimension === 2 && window.innerWidth <= 700) this.store.setInspectorOpen(false);
+    if (this.flat) {
+      this.flat.drawing = true;
+      this.flat.previewStrokes = [];
+      this.flat.invalidate();
     }
   }
   cancelDrawing(): void {
-    this.pointer = null;
+    this.drawingGeneration++;
+    this.interruptStroke();
+    this.strokes = [];
     this.pending.set(null);
-    this.points = [];
-    if (this.flat) this.flat.preview = [];
+    this.strokeCount.set(0);
+    this.drawing.set(false);
+    if (this.flat) {
+      this.flat.drawing = false;
+      this.flat.previewStrokes = [];
+      this.flat.invalidate();
+    }
+    this.tool.set('explore');
   }
-  confirmDrawing(closure: 'segment' | 'return'): void {
+  async finishDrawing(closure: 'segment' | 'return' = 'return'): Promise<boolean> {
     const points = this.pending();
-    if (!points) return;
-    this.store.setSource({ kind: 'curve2d', points: points.map((p) => [...p]), closure });
+    if (!points || this.store.busy() || this.pointer !== null) return false;
+    const generation = this.drawingGeneration;
+    const source = {
+      kind: 'curve2d' as const,
+      points: points.map((p) => [...p] as [number, number]),
+      closure,
+    };
+    try {
+      prepareCurve(source.points, 2, closure, this.project.analysis.sampleCount);
+    } catch (error) {
+      this.error(error);
+      return false;
+    }
+    const previous = this.store.reference;
+    this.store.edit((p) => {
+      p.name = 'Dibujo libre';
+      p.source = source;
+    }, false);
+    await this.store.analyze();
+    if (
+      generation !== this.drawingGeneration ||
+      JSON.stringify(this.project.source) !== JSON.stringify(source) ||
+      this.store.reference === previous
+    )
+      return false;
     this.cancelDrawing();
-    this.chooseTool('explore');
+    this.store.seek(0);
+    return true;
+  }
+  async confirmDrawing(closure: 'segment' | 'return'): Promise<void> {
+    if (await this.finishDrawing(closure)) this.store.togglePlay();
+  }
+  async togglePlay(): Promise<void> {
+    if (this.drawing()) {
+      if (!(await this.finishDrawing())) return;
+    }
+    this.store.togglePlay();
+  }
+  selectManual(id?: string): void {
+    this.cancelDrawing();
+    if (id) this.store.manualPreset(id);
+    else this.store.manual();
   }
   changePoint(index: number, point: Vec3): void {
     this.store.edit((p) => {
@@ -504,6 +587,7 @@ export class StudioShell implements AfterViewInit, OnDestroy {
     }, false);
   }
   setPreset(id: string): void {
+    this.cancelDrawing();
     this.store.setPreset(id);
     this.fitted = false;
   }
@@ -511,6 +595,8 @@ export class StudioShell implements AfterViewInit, OnDestroy {
     if (dimension === this.dimension) return;
     this.captureView();
     const navigate = async () => {
+      if (this.drawing() && !this.pending()) this.cancelDrawing();
+      if (this.drawing() && !(await this.finishDrawing())) return;
       if (this.store.dirty()) await this.store.repository.draft(this.store.snapshot());
       await this.router.navigate(['/studio', dimension === 2 ? '2d' : '3d']);
     };
@@ -532,6 +618,7 @@ export class StudioShell implements AfterViewInit, OnDestroy {
     this.trigger?.focus();
   }
   async openProject(p: Project, copy = false): Promise<void> {
+    this.cancelDrawing();
     this.captureView();
     this.close();
     if (this.store.dirty())

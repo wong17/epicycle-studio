@@ -5,7 +5,7 @@ test.beforeEach(async ({ page }) => {
   await page.goto('/studio/2d');
   await expect(page.locator('canvas[data-ready]')).toHaveAttribute('data-ready', 'true');
 });
-test('drawsWithExplicitClosureAndPlayback', async ({ page }) => {
+test('freehandPlaybackUsesDrawing', async ({ page }) => {
   await page.getByRole('button', { name: '✎ Dibujar', exact: true }).click();
   const b = (await page.locator('canvas[data-ready]').boundingBox())!;
   await page.mouse.move(b.x + b.width * 0.3, b.y + b.height * 0.4);
@@ -13,13 +13,96 @@ test('drawsWithExplicitClosureAndPlayback', async ({ page }) => {
   await page.mouse.move(b.x + b.width * 0.65, b.y + b.height * 0.4, { steps: 15 });
   await page.mouse.move(b.x + b.width * 0.55, b.y + b.height * 0.7, { steps: 15 });
   await page.mouse.up();
-  await expect(page.getByText('¿Cómo quieres cerrar el trazo?')).toBeVisible();
-  await page.getByRole('button', { name: 'Regresar por el trazo' }).click();
+  await expect(page.getByText('Dibujo libre · 1 trazo')).toBeVisible();
   await expect(page.getByRole('button', { name: 'Reproducir', exact: true })).toBeEnabled();
   await page.getByRole('button', { name: 'Reproducir', exact: true }).click();
   await expect(page.getByRole('button', { name: 'Pausar', exact: true })).toBeVisible();
   await page.getByRole('button', { name: 'Pausar', exact: true }).click();
 });
+test('freehandMultipleStrokesClearAndPresetSelection', async ({ page }) => {
+  const examples = page.getByRole('group', { name: 'Explora un ejemplo' });
+  await expect(examples.getByRole('button', { name: 'Corazón' })).toHaveAttribute(
+    'aria-pressed',
+    'true',
+  );
+  await page.getByRole('button', { name: '✎ Dibujar', exact: true }).click();
+  const b = (await page.locator('canvas[data-ready]').boundingBox())!;
+  const stroke = async (x: number, y: number) => {
+    await page.mouse.move(b.x + b.width * x, b.y + b.height * y);
+    await page.mouse.down();
+    await page.mouse.move(b.x + b.width * (x + 0.12), b.y + b.height * (y + 0.1), { steps: 12 });
+    await page.mouse.move(b.x + b.width * (x + 0.18), b.y + b.height * y, { steps: 12 });
+    await page.mouse.up();
+  };
+  await stroke(0.22, 0.3);
+  await page.getByRole('button', { name: 'Limpiar y empezar de nuevo', exact: true }).click();
+  await expect(page.getByText('Dibujo libre · 0 trazos')).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Reproducir', exact: true })).toBeDisabled();
+  await stroke(0.28, 0.32);
+  await stroke(0.42, 0.46);
+  await expect(page.getByText('Dibujo libre · 2 trazos')).toBeVisible();
+  await page.screenshot({ path: test.info().outputPath('freehand-desktop.png') });
+  await page.getByRole('button', { name: 'Reproducir', exact: true }).click();
+  await expect(page.getByRole('button', { name: 'Pausar', exact: true })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Dibujo libre', exact: true })).toBeVisible();
+  await expect(examples.locator('[aria-pressed="true"]')).toHaveCount(0);
+  const download = page.waitForEvent('download');
+  await page.getByRole('button', { name: 'Exportar y compartir', exact: true }).click();
+  await page.getByRole('button', { name: 'Proyecto JSON', exact: true }).click();
+  const file = await download;
+  const project = JSON.parse(await readFile((await file.path())!, 'utf8'));
+  expect(project.source.kind).toBe('curve2d');
+  expect(project.source.closure).toBe('return');
+  expect(project.source.points.length).toBeGreaterThan(30);
+  expect(project.source.points.length).toBeLessThan(100);
+  await page.keyboard.press('Escape');
+  await examples.getByRole('button', { name: 'Estrella', exact: true }).click();
+  await expect(examples.getByRole('button', { name: 'Estrella', exact: true })).toHaveAttribute(
+    'aria-pressed',
+    'true',
+  );
+  await expect(examples.getByRole('button', { name: 'Corazón' })).toHaveAttribute(
+    'aria-pressed',
+    'false',
+  );
+});
+
+test('freehandControlsFitMobileAndEmptyDrawingDoesNotTrapNavigation', async ({ page }) => {
+  for (const viewport of [
+    { width: 320, height: 640 },
+    { width: 360, height: 800 },
+  ]) {
+    await page.setViewportSize(viewport);
+    const toggle = page.getByRole('button', { name: 'Mostrar u ocultar inspector' });
+    if ((await toggle.getAttribute('aria-expanded')) === 'true') await toggle.click();
+    await page.getByRole('button', { name: '✎ Dibujar', exact: true }).click();
+    const panel = page.locator('.closure');
+    const box = (await panel.boundingBox())!;
+    const transport = (await page.locator('.transport').boundingBox())!;
+    expect(box.x).toBeGreaterThanOrEqual(0);
+    expect(box.x + box.width).toBeLessThanOrEqual(viewport.width);
+    expect(box.y + box.height).toBeLessThanOrEqual(transport.y);
+    await expect(
+      page.getByRole('button', { name: 'Limpiar y empezar de nuevo', exact: true }),
+    ).toBeVisible();
+    await page.mouse.move(90, 235);
+    await page.mouse.down();
+    await page.mouse.move(135, 195, { steps: 8 });
+    await page.mouse.move(175, 240, { steps: 8 });
+    await page.mouse.up();
+    await expect(page.getByText('Dibujo libre · 1 trazo')).toBeVisible();
+    await page.screenshot({ path: test.info().outputPath(`freehand-${viewport.width}.png`) });
+    await toggle.click();
+    await expect(panel).toBeHidden();
+    await toggle.click();
+    await expect(panel).toBeVisible();
+    await page.getByRole('button', { name: 'Cancelar dibujo', exact: true }).click();
+  }
+  await page.getByRole('button', { name: '✎ Dibujar', exact: true }).click();
+  await page.getByRole('button', { name: 'Espacio 3D', exact: true }).click();
+  await expect(page).toHaveURL(/studio\/3d/);
+});
+
 test('manualSaveReloadAndJsonExport', async ({ page }) => {
   await page.getByRole('button', { name: 'Componer', exact: true }).click();
   await page.getByRole('button', { name: '+ Añadir círculo' }).click();

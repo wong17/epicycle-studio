@@ -9,7 +9,8 @@ export class CanvasRenderer {
   private width = 1;
   private height = 1;
   private revision = -1;
-  preview: readonly Vec2[] = [];
+  drawing = false;
+  previewStrokes: readonly (readonly Vec2[])[] = [];
   transparent = false;
   constructor(
     readonly canvas: HTMLCanvasElement,
@@ -101,12 +102,12 @@ export class CanvasRenderer {
         }
         cache.stroke();
       }
-      if (p.appearance.original && this.store.reference) {
+      if (!this.drawing && p.appearance.original && this.store.reference) {
         cache.setLineDash([5, 5]);
         this.path(cache, this.store.reference, '#909090', 1.5);
         cache.setLineDash([]);
       }
-      if (p.appearance.reconstruction && this.store.reconstruction)
+      if (!this.drawing && p.appearance.reconstruction && this.store.reconstruction)
         this.path(cache, this.store.reconstruction, p.appearance.color, p.appearance.width);
       this.revision = this.store.revision();
     }
@@ -114,6 +115,22 @@ export class CanvasRenderer {
     c.clearRect(0, 0, this.canvas.width, this.canvas.height);
     c.drawImage(this.cache, 0, 0);
     c.setTransform(this.dpr, 0, 0, this.dpr, 0, 0);
+    if (this.drawing) {
+      c.strokeStyle = '#ededed';
+      c.lineWidth = 2;
+      c.lineCap = 'round';
+      c.lineJoin = 'round';
+      for (const stroke of this.previewStrokes) {
+        c.beginPath();
+        stroke.forEach((point, i) => {
+          const screen = this.viewport.worldToScreen(point);
+          if (i) c.lineTo(...screen);
+          else c.moveTo(...screen);
+        });
+        c.stroke();
+      }
+      return;
+    }
     if (p.appearance.trace && this.store.reconstruction)
       this.path(
         c,
@@ -168,27 +185,8 @@ export class CanvasRenderer {
     c.arc(...tip, 4, 0, Math.PI * 2);
     c.fillStyle = p.appearance.color;
     c.fill();
-    if (this.preview.length) {
-      c.beginPath();
-      this.preview.forEach((p, i) => {
-        const [x, y] = this.viewport.worldToScreen(p);
-        if (i) c.lineTo(x, y);
-        else c.moveTo(x, y);
-      });
-      c.strokeStyle = '#ededed';
-      c.lineWidth = 2;
-      c.stroke();
-      c.setLineDash([4, 4]);
-      const start = this.viewport.worldToScreen(this.preview[0]),
-        last = this.viewport.worldToScreen(this.preview.at(-1)!);
-      c.beginPath();
-      c.moveTo(...start);
-      c.lineTo(...last);
-      c.strokeStyle = '#ffa68b';
-      c.stroke();
-      c.setLineDash([]);
-    }
   }
+
   dispose(): void {
     this.cache.width = 0;
     this.cache.height = 0;

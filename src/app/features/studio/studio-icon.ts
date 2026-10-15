@@ -29,6 +29,7 @@ const paths: Record<string, string> = {
   up: 'M12 20V4M5 11l7-7 7 7',
   down: 'M12 4v16M5 13l7 7 7-7',
   copy: 'M9 9h12v12H9zM15 9V3H3v12h6',
+  erase: 'M3 14l9-11 9 8-8 10H9zM7 10l9 8M12 21h10',
   close: 'M6 6l12 12M6 18L18 6',
   collapse: 'M8 5l7 7-7 7',
   pause: 'M8 5v14M16 5v14',

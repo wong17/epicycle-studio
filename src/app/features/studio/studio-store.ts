@@ -1,4 +1,4 @@
-import { Injectable, signal } from '@angular/core';
+import { Injectable, computed, signal } from '@angular/core';
 import {
   Project,
   Source,
@@ -61,6 +61,40 @@ export class StudioStore {
       'Corazón armónico',
     ),
   );
+  readonly selectedPreset = computed(() => {
+    const { dimension, source } = this.project();
+    if (source.kind !== 'curve2d' && source.kind !== 'curve3d') return '';
+    const ids =
+      dimension === 2
+        ? ['circle', 'ellipse', 'star', 'heart', 'flower']
+        : ['cinquefoil', 'trefoil', 'lissajous', 'tilted'];
+    return (
+      ids.find((id) => {
+        let points = getPreset(id, dimension);
+        if (dimension === 3) points = points.filter((_, i) => i % 2 === 0);
+        return (
+          source.closure === 'segment' &&
+          (source.kind !== 'curve3d' || source.interpolation === 'centripetal') &&
+          JSON.stringify(source.points) ===
+            JSON.stringify(
+              points.map((p) => (dimension === 2 ? [p[0], p[1]] : [p[0], p[1], p[2] ?? 0])),
+            )
+        );
+      }) ?? ''
+    );
+  });
+  readonly selectedManualPreset = computed(() => {
+    const { dimension, source } = this.project();
+    if (source.kind !== 'manual2d' && source.kind !== 'manual3d') return '';
+    const serialize = (value: Source) =>
+      JSON.stringify(value, (key, item) => (key === 'id' ? undefined : item));
+    return (
+      (dimension === 2
+        ? ['rose', 'ellipse', 'lissajous']
+        : ['coplanar', 'perpendicular', 'five']
+      ).find((id) => serialize(source) === serialize(getManualPreset(dimension, id))) ?? ''
+    );
+  });
   readonly busy = signal(false);
   readonly notice = signal('');
   readonly dirty = signal(false);

@@ -93,6 +93,7 @@
       </button>
       <button
         #exportTrigger
+        [disabled]="drawing()"
         (click)="exportOpen.set(!exportOpen())"
         [attr.aria-expanded]="exportOpen()"
         aria-controls="export-popover"
@@ -364,6 +365,7 @@
           }
           <button
             (click)="store.undo()"
+            [disabled]="drawing() || store.busy()"
             aria-label="Deshacer"
             class="icon-button"
             title="Deshacer"
@@ -372,6 +374,7 @@
             <studio-icon name="undo" /><span class="sr-only">↶</span></button
           ><button
             (click)="store.redo()"
+            [disabled]="drawing() || store.busy()"
             aria-label="Rehacer"
             class="icon-button"
             title="Rehacer"
@@ -404,7 +407,7 @@
           (pointerdown)="pointerDown($event)"
           (pointermove)="pointerMove($event)"
           (pointerup)="pointerUp($event)"
-          (pointercancel)="cancelDrawing()"
+          (pointercancel)="interruptStroke()"
         ></canvas
         ><canvas
           #projection
@@ -474,19 +477,53 @@
         @if (store.busy()) {
           <div class="calculation" role="status">Calculando la curva…</div>
         }
-        @if (tool() === 'draw' && !pending()) {
-          <div class="canvas-hint">
-            Dibuja una sola trayectoria. Elige cómo cerrarla al terminar.
-          </div>
-        }
-        @if (pending()) {
-          <div class="closure">
-            <strong>¿Cómo quieres cerrar el trazo?</strong>
-            <p>La línea discontinua muestra la conexión entre extremos.</p>
+        @if (drawing()) {
+          <div class="closure" aria-label="Dibujo libre">
+            <strong
+              >Dibujo libre · {{ strokeCount() }} trazo{{ strokeCount() === 1 ? '' : 's' }}</strong
+            >
+            <p>Puedes levantar el lápiz y seguir. Al reproducir, los trazos se unen por orden.</p>
             <div>
-              <button class="primary" (click)="confirmDrawing('segment')">Conectar extremos</button
-              ><button (click)="confirmDrawing('return')">Regresar por el trazo</button
-              ><button (click)="cancelDrawing()">Cancelar</button>
+              <button
+                class="primary icon-button"
+                (click)="confirmDrawing('return')"
+                [disabled]="!pending() || store.busy()"
+                aria-label="Animar dibujo"
+                title="Animar dibujo"
+                data-tooltip="Animar dibujo"
+              >
+                <studio-icon name="play" />
+              </button>
+              <button
+                class="icon-button"
+                (click)="confirmDrawing('segment')"
+                [disabled]="!pending() || store.busy()"
+                aria-label="Conectar extremos y animar"
+                title="Conectar extremos y animar"
+                data-tooltip="Conectar extremos y animar"
+              >
+                <studio-icon name="close-path" />
+              </button>
+              <button
+                class="icon-button"
+                (click)="clearDrawing()"
+                [disabled]="store.busy()"
+                aria-label="Limpiar y empezar de nuevo"
+                title="Limpiar y empezar de nuevo"
+                data-tooltip="Limpiar y empezar de nuevo"
+              >
+                <studio-icon name="erase" />
+              </button>
+              <button
+                class="icon-button"
+                (click)="cancelDrawing()"
+                [disabled]="store.busy()"
+                aria-label="Cancelar dibujo"
+                title="Cancelar dibujo"
+                data-tooltip="Cancelar dibujo"
+              >
+                <studio-icon name="close" />
+              </button>
             </div>
           </div>
         }
@@ -504,8 +541,8 @@
         </button>
         <button
           class="play primary icon-button"
-          (click)="store.togglePlay()"
-          [disabled]="store.busy()"
+          (click)="togglePlay()"
+          [disabled]="store.busy() || (drawing() && !pending())"
           [attr.aria-label]="store.playing() ? 'Pausar' : 'Reproducir'"
           [title]="store.playing() ? 'Pausar' : 'Reproducir'"
           [attr.data-tooltip]="store.playing() ? 'Pausar' : 'Reproducir'"
@@ -591,7 +628,7 @@
               <studio-icon name="curve" /><span class="sr-only"> Reconstruir</span></button
             ><button
               [class.selected]="manual"
-              (click)="store.manual()"
+              (click)="selectManual()"
               class="icon-button"
               title="Componer"
               data-tooltip="Componer"
@@ -619,9 +656,8 @@
                       { value: 'tilted', label: 'Círculo inclinado', icon: 'tilted' },
                     ]
               "
-              [value]="''"
+              [value]="drawing() ? '' : store.selectedPreset()"
               (valueChange)="setPreset($event)"
-              [selectable]="false"
             />
             <div class="button-row">
               <button
@@ -743,9 +779,8 @@
                       { value: 'five', label: 'Cadena de cinco círculos', icon: 'chain' },
                     ]
               "
-              [value]="''"
-              (valueChange)="store.manualPreset($event)"
-              [selectable]="false"
+              [value]="store.selectedManualPreset()"
+              (valueChange)="selectManual($event)"
             />
             <p class="helper">
               Radio en unidades de proyecto · frecuencia en vueltas por ciclo · fase en grados.

@@ -1,6 +1,8 @@
-import { it, expect, vi } from 'vitest';
+import { it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { StudioStore } from './studio-store';
 import { parseProject, migrateProject, createProject } from '../../domain/projects/project-schema';
+beforeEach(() => vi.stubGlobal('matchMedia', () => ({ matches: false })));
+afterEach(() => vi.unstubAllGlobals());
 it('rejectsDegenerateImportBeforeReplacement', () => {
   const store = new StudioStore(),
     p = store.snapshot();
@@ -105,5 +107,34 @@ it('cameraAndPlaybackDoNotReplaceGeometryUndo', () => {
   if (source.kind === 'manual2d') expect(source.circles[0].radius).toBe(0.7);
   expect(store.project().view.camera).toBe('xy');
   expect(store.clock.speed).toBe(2);
+  store.dispose();
+});
+
+it('presetSelectionSurvivesImportAndClearsAfterGeometryEdit', async () => {
+  const store = new StudioStore();
+  vi.spyOn(store, 'analyze').mockResolvedValue();
+  vi.spyOn(store.repository, 'drafts').mockResolvedValue([]);
+  expect(store.selectedPreset()).toBe('heart');
+  store.setPreset('star');
+  const saved = parseProject(JSON.stringify(store.snapshot()));
+  await store.load(saved);
+  expect(store.selectedPreset()).toBe('star');
+  store.edit((p) => {
+    if (p.source.kind === 'curve2d') p.source.points[0][0] += 0.1;
+  }, false);
+  expect(store.selectedPreset()).toBe('');
+  store.undo();
+  expect(store.selectedPreset()).toBe('star');
+  for (const dimension of [2, 3] as const) {
+    await store.init(dimension);
+    const ids =
+      dimension === 2 ? ['rose', 'ellipse', 'lissajous'] : ['coplanar', 'perpendicular', 'five'];
+    for (const id of ids) {
+      store.manualPreset(id);
+      await store.load(parseProject(JSON.stringify(store.snapshot())));
+      expect(store.selectedManualPreset()).toBe(id);
+      expect(store.selectedPreset()).toBe('');
+    }
+  }
   store.dispose();
 });
