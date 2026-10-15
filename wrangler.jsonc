@@ -1,0 +1,12 @@
+{
+  "name": "epicycle-studio",
+  "compatibility_date": "2026-10-14",
+  "workers_dev": true,
+  "build": {
+    "command": "npm run build",
+  },
+  "assets": {
+    "directory": "./dist/epicycle-studio/browser",
+    "not_found_handling": "single-page-application",
+  },
+}

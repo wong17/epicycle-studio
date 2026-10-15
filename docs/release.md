@@ -2,6 +2,12 @@
 
 **Estado:** preparado para que el usuario lo suba a Cloudflare Pages. Aún no hay una URL pública comprobada ni un despliegue remoto realizado desde esta sesión.
 
+## Workers conectado a GitHub
+
+El despliegue en `epicycle-studio.josuewong797.workers.dev` usa Workers con archivos estáticos. `wrangler.jsonc` fija la raíz en `dist/epicycle-studio/browser` y habilita el fallback SPA para las rutas Angular. El comando de despliegue del panel es `npx wrangler deploy`; Wrangler ejecuta `npm run build` mediante `build.command`, incluso si no hay un comando de build separado en el panel. Si el panel también ejecuta `npm run build`, el build se repetirá; ese paso separado puede dejarse vacío.
+
+La autodetección anterior seleccionaba `dist/`, por lo que publicaba `/epicycle-studio/browser/index.html` y la raíz devolvía 404. Mantener `wrangler.jsonc` en Git evita depender de esa autodetección. Las instrucciones de Pages siguen siendo válidas para carga manual.
+
 ## Carga manual
 
 1. En el panel de Cloudflare, abre **Workers & Pages**, crea una aplicación de **Pages** y elige la opción de cargar archivos precompilados (Direct Upload).
