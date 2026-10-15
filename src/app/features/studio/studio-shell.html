@@ -1,0 +1,1180 @@
+<div
+  class="studio"
+  [class.inspector-closed]="!inspectorOpen()"
+  [class.transport-closed]="!transportOpen()"
+  [class.math-open]="store.mathOpen()"
+  [class.has-notice]="store.notice() || store.recovery()"
+>
+  <header class="topbar">
+    <a
+      class="brand"
+      (click)="switchMode(2); $event.preventDefault()"
+      href="/studio/2d"
+      (keydown.enter)="switchMode(2); $event.preventDefault()"
+      aria-label="Epicycle Studio, inicio"
+      ><span class="brand-mark">◎</span
+      ><span
+        >epicycle<span class="brand-small">STUDIO / {{ dimension }}D</span></span
+      ></a
+    >
+    <div class="projectbar" role="region" aria-label="Proyecto actual">
+      <div>
+        <h1 [attr.aria-label]="project.name">
+          <input
+            class="project-name"
+            aria-label="Nombre del proyecto"
+            title="Haz clic para cambiar el nombre"
+            maxlength="80"
+            [attr.size]="project.name.length > 26 ? 26 : project.name.length + 1"
+            [value]="project.name"
+            (input)="queueRename($any($event.target).value)"
+            (blur)="rename($any($event.target).value); $any($event.target).value = project.name"
+            (keydown.enter)="$any($event.target).blur()"
+          />
+        </h1>
+      </div>
+      <div class="project-state">
+        <span class="status-dot" [class.dirty]="store.dirty()"></span
+        >{{ store.dirty() ? 'Sin guardar' : 'Guardado' }}
+      </div>
+    </div>
+    <nav class="mode-switch" aria-label="Dimensión">
+      <button
+        [class.selected]="dimension === 2"
+        [attr.aria-pressed]="dimension === 2"
+        (click)="switchMode(2)"
+        class="icon-button"
+        title="Plano 2D"
+        data-tooltip="Plano 2D"
+        aria-label="Plano 2D"
+      >
+        <studio-icon name="plane" /><span class="sr-only"> Plano 2D</span></button
+      ><button
+        [class.selected]="dimension === 3"
+        [attr.aria-pressed]="dimension === 3"
+        (click)="switchMode(3)"
+        class="icon-button"
+        title="Espacio 3D"
+        data-tooltip="Espacio 3D"
+        aria-label="Espacio 3D"
+      >
+        <studio-icon name="cube" /><span class="sr-only"> Espacio 3D </span>
+      </button>
+    </nav>
+    <div class="header-actions">
+      <a routerLink="/learn" class="learn-link" title="Cómo funciona" aria-label="Cómo funciona"
+        ><studio-icon name="help" /></a
+      ><button
+        (click)="open('library')"
+        class="icon-button"
+        title="Biblioteca"
+        data-tooltip="Biblioteca"
+        aria-label="Biblioteca"
+      >
+        <studio-icon name="folder" /><span class="sr-only">Biblioteca</span></button
+      ><button
+        class="primary icon-button"
+        [disabled]="store.busy()"
+        (click)="save()"
+        title="Guardar ↗"
+        data-tooltip="Guardar ↗"
+        aria-label="Guardar ↗"
+      >
+        <studio-icon name="save" /><span class="sr-only">Guardar ↗</span>
+      </button>
+      <button
+        (click)="file.click()"
+        aria-label="Importar proyecto o SVG"
+        class="icon-button"
+        title="Importar proyecto o SVG"
+        data-tooltip="Importar proyecto o SVG"
+      >
+        <studio-icon name="import" /><span class="sr-only">Importar</span>
+      </button>
+      <button
+        #exportTrigger
+        (click)="exportOpen.set(!exportOpen())"
+        [attr.aria-expanded]="exportOpen()"
+        aria-controls="export-popover"
+        aria-label="Exportar y compartir"
+        class="icon-button"
+        title="Exportar y compartir"
+        data-tooltip="Exportar y compartir"
+      >
+        <studio-icon name="export" /><span class="sr-only">Exportar</span>
+      </button>
+      <button
+        #inspectorTrigger
+        (click)="toggleInspector()"
+        [attr.aria-expanded]="inspectorOpen()"
+        aria-controls="curve-inspector"
+        aria-label="Mostrar u ocultar inspector"
+        class="icon-button"
+        title="Mostrar u ocultar inspector"
+        data-tooltip="Mostrar u ocultar inspector"
+      >
+        <studio-icon name="panel" /><span class="sr-only">Inspector</span>
+      </button>
+    </div>
+  </header>
+  @if (store.notice()) {
+    <div class="notice" role="status">
+      <span>{{ store.notice() }}</span
+      ><button
+        class="quiet icon-button"
+        (click)="store.notice.set('')"
+        aria-label="Cerrar aviso"
+        title="Cerrar aviso"
+        data-tooltip="Cerrar aviso"
+      >
+        <studio-icon name="close" /><span class="sr-only">×</span>
+      </button>
+    </div>
+  }
+  @if (store.recovery() && !store.notice()) {
+    <div class="notice" role="region" aria-label="Recuperar borrador">
+      <span>Borrador disponible: {{ store.recovery()?.name }}</span
+      ><button (click)="recover()">Recuperar</button
+      ><button (click)="discardRecovery()">Descartar</button>
+    </div>
+  }
+  <section
+    class="panel export-panel"
+    id="export-popover"
+    [hidden]="!exportOpen()"
+    aria-label="Exportar y compartir"
+  >
+    @if (dimension === 3) {
+      <details>
+        <summary>Calidad de la escultura</summary>
+        <label
+          >Radio del tubo normalizado<input
+            type="number"
+            min="0.002"
+            max="0.1"
+            step="0.002"
+            [value]="project.appearance.tubeRadius"
+            (change)="store.edit(patchRadius(+$any($event.target).value), false)" /></label
+        ><studio-options
+          label="Tolerancia de línea central"
+          [options]="[
+            { value: '0.005', label: '0.5 % del tamaño', icon: 'precision', badge: '0.5%' },
+            { value: '0.01', label: '1 % del tamaño', icon: 'precision', badge: '1%' },
+            { value: '0.02', label: '2 % del tamaño', icon: 'precision', badge: '2%' },
+          ]"
+          [value]="project.appearance.tolerance ?? 0.005"
+          (valueChange)="store.edit(patchTolerance(+$event), false)"
+        />
+      </details>
+    }
+    @if (recording()) {
+      <button
+        class="full icon-button"
+        (click)="cancelVideo()"
+        title="Cancelar grabación"
+        data-tooltip="Cancelar grabación"
+        aria-label="Cancelar grabación"
+      >
+        <studio-icon name="stop" /><span class="sr-only">Cancelar grabación</span>
+      </button>
+    } @else {
+      <button
+        class="full icon-button"
+        (click)="video()"
+        [disabled]="store.busy() || !videoAvailable"
+        [title]="'Grabar un ciclo · ' + 8 / project.playback.speed + ' s'"
+        [attr.data-tooltip]="'Grabar un ciclo · ' + 8 / project.playback.speed + ' s'"
+        [attr.aria-label]="'Grabar un ciclo · ' + 8 / project.playback.speed + ' s'"
+      >
+        <studio-icon name="video" /><span class="sr-only">Grabar animación completa</span>
+      </button>
+    }
+    <p class="helper">
+      {{
+        videoAvailable
+          ? 'Un ciclo completo en video · 1280 × 720. Mantén la pestaña visible.'
+          : 'Este navegador no admite grabación. Puedes exportar PNG o JSON.'
+      }}
+    </p>
+    <h2>Llévate tu creación <span>↗</span></h2>
+    <details>
+      <summary>Opciones de imagen PNG</summary>
+      <studio-options
+        label="Resolución"
+        [options]="[
+          { value: '1', label: '1×', icon: 'image', badge: '1×' },
+          { value: '2', label: '2× · máximo 4096 px', icon: 'image', badge: '2×' },
+        ]"
+        [value]="pngScale"
+        (valueChange)="pngScale = +$event"
+      /><label><input type="checkbox" [(ngModel)]="pngTransparent" />Fondo transparente</label>
+    </details>
+    <div class="export-grid">
+      <button
+        [disabled]="store.busy()"
+        (click)="png()"
+        class="icon-button"
+        title="Imagen PNG"
+        data-tooltip="Imagen PNG"
+        aria-label="Imagen PNG"
+      >
+        <studio-icon name="image" /><span class="sr-only">Imagen PNG</span>
+      </button>
+      @if (dimension === 2) {
+        <button
+          [disabled]="store.busy()"
+          (click)="exportSvg()"
+          class="icon-button"
+          title="Vector SVG"
+          data-tooltip="Vector SVG"
+          aria-label="Vector SVG"
+        >
+          <studio-icon name="vector" /><span class="sr-only">Vector SVG</span>
+        </button>
+      } @else {
+        <button
+          [disabled]="store.busy()"
+          (click)="glb()"
+          class="icon-button"
+          title="Escultura GLB"
+          data-tooltip="Escultura GLB"
+          aria-label="Escultura GLB"
+        >
+          <studio-icon name="cube" /><span class="sr-only">Escultura GLB</span>
+        </button>
+      }
+      <button
+        (click)="exportJson()"
+        class="icon-button"
+        title="Proyecto JSON"
+        data-tooltip="Proyecto JSON"
+        aria-label="Proyecto JSON"
+      >
+        <studio-icon name="code" /><span class="sr-only">Proyecto JSON</span></button
+      ><button
+        (click)="copyLink()"
+        class="icon-button"
+        title="Copiar enlace"
+        data-tooltip="Copiar enlace"
+        aria-label="Copiar enlace"
+      >
+        <studio-icon name="link" /><span class="sr-only">Copiar enlace</span>
+      </button>
+    </div>
+    @if (dimension === 3) {
+      <button
+        class="full icon-button"
+        [disabled]="store.busy()"
+        (click)="saveProjection()"
+        title="Guardar proyección como proyecto 2D →"
+        data-tooltip="Guardar proyección como proyecto 2D →"
+        aria-label="Guardar proyección como proyecto 2D →"
+      >
+        <studio-icon name="plane" /><span class="sr-only">
+          Guardar proyección como proyecto 2D →
+        </span>
+      </button>
+    }
+    @if (dimension === 2) {
+      <button
+        class="full lift icon-button"
+        (click)="lift()"
+        title="Llevar una copia a 3D →"
+        data-tooltip="Llevar una copia a 3D →"
+        aria-label="Llevar una copia a 3D →"
+      >
+        <studio-icon name="cube" /><span class="sr-only">Llevar una copia a 3D →</span>
+      </button>
+      <details>
+        <summary>Compatibilidad del proyecto</summary>
+        <button
+          class="full icon-button"
+          (click)="exportV1()"
+          title="Descargar JSON V1 · sólo 2D"
+          data-tooltip="Descargar JSON V1 · sólo 2D"
+          aria-label="Descargar JSON V1 · sólo 2D"
+        >
+          <studio-icon name="code" /><span class="sr-only">Descargar JSON V1 · sólo 2D</span>
+        </button>
+      </details>
+    }
+    <p class="helper">
+      Tus dibujos viven en este navegador. Descarga JSON para conservar una copia editable.
+    </p>
+  </section>
+  <main class="workspace">
+    <section class="drawing-region" aria-label="Área de creación">
+      <div class="canvas-toolbar">
+        <button
+          class="icon-button"
+          (click)="toolsOpen.set(!toolsOpen())"
+          [attr.aria-expanded]="toolsOpen()"
+          aria-label="Expandir o colapsar herramientas"
+          title="Expandir o colapsar herramientas"
+          data-tooltip="Expandir o colapsar herramientas"
+        >
+          <studio-icon name="panel" />
+        </button>
+        <div class="tools" [hidden]="!toolsOpen()" aria-label="Herramientas">
+          <button
+            [class.selected]="tool() === 'explore'"
+            (click)="chooseTool('explore')"
+            class="icon-button"
+            title="↖ Explorar"
+            data-tooltip="↖ Explorar"
+            aria-label="↖ Explorar"
+          >
+            <studio-icon name="cursor" /><span class="sr-only"> ↖ <span>Explorar</span> </span>
+          </button>
+          @if (dimension === 2) {
+            <button
+              [class.selected]="tool() === 'draw'"
+              (click)="chooseTool('draw')"
+              class="icon-button"
+              title="✎ Dibujar"
+              data-tooltip="✎ Dibujar"
+              aria-label="✎ Dibujar"
+            >
+              <studio-icon name="edit" /><span class="sr-only">
+                ✎ <span>Dibujar</span></span
+              ></button
+            ><button
+              [class.selected]="tool() === 'pan'"
+              (click)="chooseTool('pan')"
+              class="icon-button"
+              title="↔ Mover"
+              data-tooltip="↔ Mover"
+              aria-label="↔ Mover"
+            >
+              <studio-icon name="move" /><span class="sr-only"> ↔ <span>Mover</span> </span>
+            </button>
+          } @else {
+            <button
+              [class.selected]="tool() === 'points'"
+              (click)="chooseTool('points')"
+              class="icon-button"
+              title="⊕ Editar puntos"
+              data-tooltip="⊕ Editar puntos"
+              aria-label="⊕ Editar puntos"
+            >
+              <studio-icon name="points" /><span class="sr-only">
+                ⊕ <span>Editar puntos</span>
+              </span>
+            </button>
+          }
+          <button
+            (click)="store.undo()"
+            aria-label="Deshacer"
+            class="icon-button"
+            title="Deshacer"
+            data-tooltip="Deshacer"
+          >
+            <studio-icon name="undo" /><span class="sr-only">↶</span></button
+          ><button
+            (click)="store.redo()"
+            aria-label="Rehacer"
+            class="icon-button"
+            title="Rehacer"
+            data-tooltip="Rehacer"
+          >
+            <studio-icon name="redo" /><span class="sr-only">↷</span>
+          </button>
+        </div>
+        <button
+          class="quiet icon-button"
+          [hidden]="!toolsOpen()"
+          (click)="fit()"
+          title="Ajustar vista ⛶"
+          data-tooltip="Ajustar vista ⛶"
+          aria-label="Ajustar vista ⛶"
+        >
+          <studio-icon name="fit" /><span class="sr-only">Ajustar vista ⛶</span>
+        </button>
+      </div>
+      <div
+        class="canvas-wrap"
+        [class.drawing]="tool() === 'draw'"
+        [class.panning]="tool() === 'pan'"
+      >
+        <canvas
+          #canvas
+          [hidden]="contextLost()"
+          aria-label="Curva reconstruida con epiciclos"
+          [attr.data-ready]="ready()"
+          (pointerdown)="pointerDown($event)"
+          (pointermove)="pointerMove($event)"
+          (pointerup)="pointerUp($event)"
+          (pointercancel)="cancelDrawing()"
+        ></canvas
+        ><canvas
+          #projection
+          [hidden]="!contextLost()"
+          aria-label="Proyección de recuperación de la curva espacial"
+        ></canvas>
+        <div class="canvas-caption">
+          <span class="crosshair">+</span
+          ><span
+            >{{ dimension === 2 ? 'PLANO CARTESIANO' : 'ESPACIO DE CREACIÓN' }}<br /><b>{{
+              dimension === 2 ? 'x · y' : 'x · y · z'
+            }}</b></span
+          >
+        </div>
+        <div class="zoom-tools">
+          <button
+            (click)="zoom(0.8)"
+            aria-label="Acercar"
+            class="icon-button"
+            title="Acercar"
+            data-tooltip="Acercar"
+          >
+            <studio-icon name="plus" /><span class="sr-only">+</span></button
+          ><button
+            (click)="zoom(1.25)"
+            aria-label="Alejar"
+            class="icon-button"
+            title="Alejar"
+            data-tooltip="Alejar"
+          >
+            <studio-icon name="minus" /><span class="sr-only">−</span>
+          </button>
+          @if (dimension === 3) {
+            @for (
+              view of [
+                { id: 'perspective', label: 'Vista en perspectiva', icon: 'cube' },
+                { id: 'xy', label: 'Vista frontal', icon: 'front' },
+                { id: 'xz', label: 'Vista superior', icon: 'top' },
+                { id: 'yz', label: 'Vista lateral', icon: 'side' },
+              ];
+              track view.id
+            ) {
+              <button
+                class="icon-button"
+                (click)="camera(view.id)"
+                [class.selected]="project.view.camera === view.id"
+                [attr.aria-pressed]="project.view.camera === view.id"
+                [attr.aria-label]="view.label"
+                [title]="view.label"
+                [attr.data-tooltip]="view.label"
+              >
+                <studio-icon [name]="view.icon" />
+              </button>
+            }
+            <button
+              (click)="rotate()"
+              aria-label="Rotar cámara"
+              class="icon-button"
+              title="Rotar cámara"
+              data-tooltip="Rotar cámara"
+            >
+              <studio-icon name="rotate" /><span class="sr-only">↻</span>
+            </button>
+          }
+        </div>
+        <span class="phase-label">τ {{ store.phase() | number: '1.3-3' }}</span>
+        @if (store.busy()) {
+          <div class="calculation" role="status">Calculando la curva…</div>
+        }
+        @if (tool() === 'draw' && !pending()) {
+          <div class="canvas-hint">
+            Dibuja una sola trayectoria. Elige cómo cerrarla al terminar.
+          </div>
+        }
+        @if (pending()) {
+          <div class="closure">
+            <strong>¿Cómo quieres cerrar el trazo?</strong>
+            <p>La línea discontinua muestra la conexión entre extremos.</p>
+            <div>
+              <button class="primary" (click)="confirmDrawing('segment')">Conectar extremos</button
+              ><button (click)="confirmDrawing('return')">Regresar por el trazo</button
+              ><button (click)="cancelDrawing()">Cancelar</button>
+            </div>
+          </div>
+        }
+      </div>
+      <div class="transport">
+        <button
+          (click)="transportOpen.set(!transportOpen())"
+          [attr.aria-expanded]="transportOpen()"
+          aria-label="Expandir o colapsar reproducción"
+          class="icon-button"
+          title="Expandir o colapsar reproducción"
+          data-tooltip="Expandir o colapsar reproducción"
+        >
+          <studio-icon name="timeline" /><span class="sr-only">Reproducción</span>
+        </button>
+        <button
+          class="play primary icon-button"
+          (click)="store.togglePlay()"
+          [disabled]="store.busy()"
+          [attr.aria-label]="store.playing() ? 'Pausar' : 'Reproducir'"
+          [title]="store.playing() ? 'Pausar' : 'Reproducir'"
+          [attr.data-tooltip]="store.playing() ? 'Pausar' : 'Reproducir'"
+        >
+          <studio-icon [name]="store.playing() ? 'pause' : 'play'" /><span class="sr-only">
+            {{ store.playing() ? 'Ⅱ' : '▶' }}</span
+          ></button
+        ><button
+          class="quiet icon-button"
+          (click)="store.clock.reset(); store.seek(0)"
+          aria-label="Reiniciar"
+          title="Reiniciar"
+          data-tooltip="Reiniciar"
+        >
+          <studio-icon name="rotate" /><span class="sr-only"> ↺ </span>
+        </button>
+        <div class="timeline">
+          <label for="phase"
+            >{{ store.playing() ? 'En reproducción' : 'En pausa'
+            }}<span>{{ store.phase() * 100 | number: '1.0-0' }} %</span></label
+          ><input
+            id="phase"
+            type="range"
+            min="0"
+            max="0.9999"
+            step="0.001"
+            [value]="store.phase()"
+            (input)="store.seek(+$any($event.target).value)"
+            aria-label="Posición en el ciclo"
+          />
+        </div>
+        <studio-options
+          label="Velocidad"
+          [options]="[
+            { value: '0.25', label: '0.25×', icon: 'speed', badge: '0.25×' },
+            { value: '0.5', label: '0.5×', icon: 'speed', badge: '0.5×' },
+            { value: '1', label: '1×', icon: 'speed', badge: '1×' },
+            { value: '2', label: '2×', icon: 'speed', badge: '2×' },
+            { value: '4', label: '4×', icon: 'speed', badge: '4×' },
+          ]"
+          [value]="store.clock.speed"
+          (valueChange)="setSpeed(+$event)"
+          class="speed"
+          [compact]="true"
+        />
+      </div>
+      <div class="canvas-footer">
+        <span><i class="legend-line"></i> Reconstrucción <i class="legend-dash"></i> Original</span
+        ><span>Un ciclo · 8 segundos a 1×</span>
+      </div>
+    </section>
+    <aside
+      class="inspector"
+      id="curve-inspector"
+      [hidden]="!inspectorOpen()"
+      aria-label="Controles de la curva"
+    >
+      <div class="inspector-heading">
+        <span class="inspector-title">Propiedades</span
+        ><span class="number-badge">{{ dimension }}D</span
+        ><button
+          (click)="collapseInspector()"
+          aria-label="Colapsar inspector"
+          class="icon-button"
+          title="Colapsar inspector"
+          data-tooltip="Colapsar inspector"
+        >
+          <studio-icon name="collapse" /><span class="sr-only">Cerrar</span>
+        </button>
+      </div>
+      <details class="panel inspector-section" open>
+        <summary>El punto de partida</summary>
+        <div class="section-content">
+          <div class="source-tabs">
+            <button
+              [class.selected]="!manual"
+              (click)="setPreset(dimension === 2 ? 'heart' : 'trefoil')"
+              class="icon-button"
+              title="Reconstruir"
+              data-tooltip="Reconstruir"
+              aria-label="Reconstruir"
+            >
+              <studio-icon name="curve" /><span class="sr-only"> Reconstruir</span></button
+            ><button
+              [class.selected]="manual"
+              (click)="store.manual()"
+              class="icon-button"
+              title="Componer"
+              data-tooltip="Componer"
+              aria-label="Componer"
+            >
+              <studio-icon name="orbit" /><span class="sr-only">Componer</span>
+            </button>
+          </div>
+          @if (!manual) {
+            <studio-options
+              label="Explora un ejemplo"
+              [options]="
+                dimension === 2
+                  ? [
+                      { value: 'circle', label: 'Círculo', icon: 'circle' },
+                      { value: 'ellipse', label: 'Elipse', icon: 'ellipse' },
+                      { value: 'star', label: 'Estrella', icon: 'star' },
+                      { value: 'heart', label: 'Corazón', icon: 'heart' },
+                      { value: 'flower', label: 'Flor de cinco pétalos', icon: 'flower' },
+                    ]
+                  : [
+                      { value: 'cinquefoil', label: 'Nudo de cinco lóbulos', icon: 'cinquefoil' },
+                      { value: 'trefoil', label: 'Nudo trébol', icon: 'trefoil' },
+                      { value: 'lissajous', label: 'Lissajous espacial', icon: 'lissajous' },
+                      { value: 'tilted', label: 'Círculo inclinado', icon: 'tilted' },
+                    ]
+              "
+              [value]="''"
+              (valueChange)="setPreset($event)"
+              [selectable]="false"
+            />
+            <div class="button-row">
+              <button
+                (click)="dimension === 2 ? chooseTool('draw') : newSpatial()"
+                class="icon-button"
+                [title]="dimension === 2 ? 'Dibujar mi curva' : 'Crear curva espacial'"
+                [attr.data-tooltip]="dimension === 2 ? 'Dibujar mi curva' : 'Crear curva espacial'"
+                [attr.aria-label]="
+                  dimension === 2 ? '✎ Dibujar mi curva' : '⊕ Crear curva espacial'
+                "
+              >
+                <studio-icon name="edit" /><span class="sr-only">
+                  {{ dimension === 2 ? '✎ Dibujar mi curva' : '⊕ Crear curva espacial' }}</span
+                ></button
+              ><button
+                (click)="file.click()"
+                class="icon-button"
+                title="Importar ↥"
+                data-tooltip="Importar ↥"
+                aria-label="Importar ↥"
+              >
+                <studio-icon name="import" /><span class="sr-only">Importar ↥</span>
+              </button>
+            </div>
+          }
+        </div>
+      </details>
+      @if (!manual) {
+        <details class="panel inspector-section" open>
+          <summary>De simple a preciso</summary>
+          <div class="section-content">
+            <label for="components"
+              >{{ dimension === 2 ? 'Epiciclos' : 'Armónicos'
+              }}<strong>{{ project.analysis.count }}</strong></label
+            ><input
+              id="components"
+              (pointerdown)="store.beginEditGroup()"
+              (pointerup)="store.endEditGroup()"
+              (pointercancel)="store.endEditGroup()"
+              type="range"
+              min="1"
+              [max]="
+                dimension === 2
+                  ? project.analysis.sampleCount - 1
+                  : project.analysis.sampleCount / 2
+              "
+              [value]="project.analysis.count"
+              (input)="store.setCount(+$any($event.target).value)"
+            />
+            <div class="range-caption"><span>Esencial</span><span>Todos los detalles</span></div>
+            <div class="stats">
+              <div>
+                <span>Error RMS</span><strong>{{ store.error.rms | number: '1.5-5' }}</strong>
+              </div>
+              <div>
+                <span>Error máximo</span><strong>{{ store.error.max | number: '1.5-5' }}</strong>
+              </div>
+            </div>
+            <p class="helper">
+              Error en unidades normalizadas. Más componentes conservan más detalles del original.
+            </p>
+            <details>
+              <summary>Opciones de cálculo</summary>
+              <studio-options
+                label="Cierre del trazo"
+                [options]="[
+                  { value: 'segment', label: 'Conectar extremos', icon: 'close-path' },
+                  { value: 'return', label: 'Regresar por el recorrido', icon: 'return-path' },
+                ]"
+                [value]="closure"
+                (valueChange)="store.edit(patchClosure($event))"
+              />
+              <studio-options
+                label="Muestras"
+                [options]="[
+                  { value: '256', label: '256', icon: 'samples', badge: '256' },
+                  { value: '512', label: '512', icon: 'samples', badge: '512' },
+                  { value: '1024', label: '1024', icon: 'samples', badge: '1024' },
+                  { value: '2048', label: '2048', icon: 'samples', badge: '2048' },
+                ]"
+                [value]="project.analysis.sampleCount"
+                (valueChange)="store.edit(patchSamples(+$event))"
+              />
+              @if (dimension === 2) {
+                <studio-options
+                  label="Orden"
+                  [options]="[
+                    { value: 'amplitude', label: 'Amplitud', icon: 'amplitude' },
+                    { value: 'frequency', label: 'Frecuencia', icon: 'frequency' },
+                  ]"
+                  [value]="project.analysis.order"
+                  (valueChange)="store.edit(patchOrder($event), false)"
+                />
+              }
+            </details>
+          </div>
+        </details>
+      }
+      @if (manual) {
+        <details class="panel inspector-section" open>
+          <summary>Tu máquina de dibujar</summary>
+          <div class="section-content">
+            <studio-options
+              label="Composición de ejemplo"
+              [options]="
+                dimension === 2
+                  ? [
+                      { value: 'rose', label: 'Rosa de cinco pétalos', icon: 'flower' },
+                      { value: 'ellipse', label: 'Círculos contrarrotatorios', icon: 'ellipse' },
+                      { value: 'lissajous', label: 'Lissajous', icon: 'lissajous' },
+                    ]
+                  : [
+                      { value: 'coplanar', label: 'Círculos coplanarios', icon: 'orbit' },
+                      {
+                        value: 'perpendicular',
+                        label: 'Planos perpendiculares',
+                        icon: 'perpendicular',
+                      },
+                      { value: 'five', label: 'Cadena de cinco círculos', icon: 'chain' },
+                    ]
+              "
+              [value]="''"
+              (valueChange)="store.manualPreset($event)"
+              [selectable]="false"
+            />
+            <p class="helper">
+              Radio en unidades de proyecto · frecuencia en vueltas por ciclo · fase en grados.
+            </p>
+            <div class="numeric-row">
+              @for (value of manualOffset; track $index; let axis = $index) {
+                <label
+                  >Centro {{ ['X', 'Y', 'Z'][axis]
+                  }}<input
+                    type="number"
+                    step="0.1"
+                    [value]="value"
+                    (change)="store.offsetField(axis, +$any($event.target).value)"
+                /></label>
+              }
+            </div>
+            @for (circle of circles; track circle.id; let i = $index) {
+              <fieldset class="circle-row">
+                <legend>Círculo {{ i + 1 }}</legend>
+                @if (dimension === 3) {
+                  <details>
+                    <summary>Orientación del plano</summary>
+                    <div class="numeric-row">
+                      @for (value of circleNormal(i); track $index; let axis = $index) {
+                        <label
+                          >Normal {{ ['X', 'Y', 'Z'][axis]
+                          }}<input
+                            type="number"
+                            step="0.1"
+                            [value]="value"
+                            (change)="orientCircle(i, axis, +$any($event.target).value)"
+                        /></label>
+                      }
+                    </div>
+                  </details>
+                }
+                <div class="numeric-row">
+                  <label
+                    >Radio<input
+                      type="number"
+                      min="0"
+                      max="2"
+                      step="0.05"
+                      [value]="circle.radius"
+                      (change)="store.editCircle(i, 'radius', +$any($event.target).value)" /></label
+                  ><label
+                    >Frecuencia<input
+                      type="number"
+                      min="-128"
+                      max="128"
+                      step="1"
+                      [value]="circle.frequency"
+                      (change)="
+                        store.editCircle(i, 'frequency', +$any($event.target).value)
+                      " /></label
+                  ><label
+                    >Fase °<input
+                      type="number"
+                      min="0"
+                      max="360"
+                      step="5"
+                      [value]="(circle.phase * 180) / 3.141592653589793"
+                      (change)="
+                        store.editCircle(
+                          i,
+                          'phase',
+                          (+$any($event.target).value * 3.141592653589793) / 180
+                        )
+                      "
+                  /></label>
+                </div>
+                @if (dimension === 3) {
+                  <studio-options
+                    label="Plano"
+                    [options]="[
+                      {
+                        value: 'custom',
+                        label: 'Orientación propia',
+                        icon: 'points',
+                        disabled: true,
+                      },
+                      { value: 'xy', label: 'XY', icon: 'front', badge: 'XY' },
+                      { value: 'xz', label: 'XZ', icon: 'top', badge: 'XZ' },
+                      { value: 'yz', label: 'YZ', icon: 'side', badge: 'YZ' },
+                    ]"
+                    [value]="selectedPlane(i)"
+                    (valueChange)="store.setCirclePlane(i, $event)"
+                  />
+                }
+                <div class="circle-actions">
+                  <button
+                    (click)="store.circleAction(i, 'up')"
+                    [attr.aria-label]="'Subir círculo ' + (i + 1)"
+                    class="icon-button"
+                    [title]="'Subir círculo ' + (i + 1)"
+                    [attr.data-tooltip]="'Subir círculo ' + (i + 1)"
+                  >
+                    <studio-icon name="up" /><span class="sr-only"> ↑</span></button
+                  ><button
+                    (click)="store.circleAction(i, 'down')"
+                    [attr.aria-label]="'Bajar círculo ' + (i + 1)"
+                    class="icon-button"
+                    [title]="'Bajar círculo ' + (i + 1)"
+                    [attr.data-tooltip]="'Bajar círculo ' + (i + 1)"
+                  >
+                    <studio-icon name="down" /><span class="sr-only"> ↓</span></button
+                  ><button
+                    (click)="store.circleAction(i, 'duplicate')"
+                    class="icon-button"
+                    title="Duplicar"
+                    data-tooltip="Duplicar"
+                    aria-label="Duplicar"
+                  >
+                    <studio-icon name="copy" /><span class="sr-only">Duplicar</span></button
+                  ><button
+                    (click)="store.circleAction(i, 'remove')"
+                    [disabled]="circles.length === 1"
+                    [attr.aria-label]="'Eliminar círculo ' + (i + 1)"
+                    class="icon-button"
+                    [title]="'Eliminar círculo ' + (i + 1)"
+                    [attr.data-tooltip]="'Eliminar círculo ' + (i + 1)"
+                  >
+                    <studio-icon name="close" /><span class="sr-only"> × </span>
+                  </button>
+                </div>
+              </fieldset>
+            }
+            <button
+              class="full icon-button"
+              [disabled]="circles.length >= 32"
+              (click)="store.circleAction(0, 'add')"
+              title="+ Añadir círculo"
+              data-tooltip="+ Añadir círculo"
+              aria-label="+ Añadir círculo"
+            >
+              <studio-icon name="plus" /><span class="sr-only"> + Añadir círculo </span>
+            </button>
+          </div>
+        </details>
+      }
+      @if (dimension === 3) {
+        <details class="panel inspector-section" open>
+          <summary>Explorar el espacio</summary>
+          <div class="section-content">
+            <studio-options
+              label="Vista"
+              [options]="[
+                { value: 'perspective', label: 'Perspectiva', icon: 'cube' },
+                { value: 'xy', label: 'Frontal · XY', icon: 'front', badge: 'XY' },
+                { value: 'xz', label: 'Superior · XZ', icon: 'top', badge: 'XZ' },
+                { value: 'yz', label: 'Lateral · YZ', icon: 'side', badge: 'YZ' },
+              ]"
+              [value]="project.view.camera"
+              (valueChange)="camera($event)"
+            /><studio-options
+              label="Representación"
+              [options]="[
+                { value: 'ellipses', label: 'Órbitas elípticas', icon: 'ellipse' },
+                { value: 'circles', label: 'Pares de círculos', icon: 'orbit' },
+              ]"
+              [value]="project.appearance.representation"
+              (valueChange)="store.edit(patchRepresentation($event), false)"
+            />
+            @if (controlPoints.length) {
+              <details>
+                <summary>Editar {{ controlPoints.length }} puntos de control</summary>
+                <label
+                  ><input
+                    type="checkbox"
+                    [checked]="cyclic"
+                    (change)="store.edit(patchCyclic($any($event.target).checked))"
+                  />Spline cíclico</label
+                >
+                <studio-options
+                  label="Plano de trabajo"
+                  [options]="[
+                    { value: 'xy', label: 'XY', icon: 'front', badge: 'XY' },
+                    { value: 'xz', label: 'XZ', icon: 'top', badge: 'XZ' },
+                    { value: 'yz', label: 'YZ', icon: 'side', badge: 'YZ' },
+                  ]"
+                  [value]="project.view.plane"
+                  (valueChange)="store.edit(patchPlane($event), false)"
+                /><label
+                  >Profundidad fija<input
+                    type="number"
+                    step="0.1"
+                    [(ngModel)]="depth"
+                    (change)="setDepth()" /></label
+                ><studio-options
+                  label="Interpolación"
+                  [options]="[
+                    { value: 'polyline', label: 'Polilínea', icon: 'polyline' },
+                    { value: 'centripetal', label: 'Spline centrípeta', icon: 'spline' },
+                  ]"
+                  [value]="interpolation"
+                  (valueChange)="store.edit(patchInterpolation($event))"
+                />
+                <p class="helper">
+                  Activa Editar puntos y haz clic en el plano. Selecciona un marcador para moverlo o
+                  edita X, Y, Z aquí.
+                </p>
+                @for (point of controlPoints; track $index; let i = $index) {
+                  <div class="point-row">
+                    <span>{{ i + 1 }}</span>
+                    @for (value of point; track $index; let axis = $index) {
+                      <input
+                        type="number"
+                        step="0.1"
+                        [value]="value"
+                        [attr.aria-label]="'Punto ' + (i + 1) + ' ' + ['X', 'Y', 'Z'][axis]"
+                        (change)="pointField(i, axis, +$any($event.target).value)"
+                      />
+                    }
+                    <button
+                      (click)="removePoint(i)"
+                      [disabled]="controlPoints.length <= 4"
+                      [attr.aria-label]="'Eliminar punto ' + (i + 1)"
+                      class="icon-button"
+                      [title]="'Eliminar punto ' + (i + 1)"
+                      [attr.data-tooltip]="'Eliminar punto ' + (i + 1)"
+                    >
+                      <studio-icon name="close" /><span class="sr-only"> × </span>
+                    </button>
+                  </div>
+                }
+              </details>
+            }
+          </div>
+        </details>
+      }
+      <details class="panel inspector-section" open>
+        <summary>Lo que ves</summary>
+        <div class="section-content">
+          <p class="helper">
+            Se representan {{ visibleOrbits }} órbitas; la curva y el lápiz usan toda la selección.
+          </p>
+          <div class="layers">
+            <label
+              ><input
+                type="checkbox"
+                [checked]="project.appearance.circles"
+                (change)="setLayer('circles', $any($event.target).checked)"
+              />
+              Órbitas</label
+            ><label
+              ><input
+                type="checkbox"
+                [checked]="project.appearance.vectors"
+                (change)="setLayer('vectors', $any($event.target).checked)"
+              />
+              Vectores</label
+            ><label
+              ><input
+                type="checkbox"
+                [checked]="project.appearance.original"
+                (change)="setLayer('original', $any($event.target).checked)"
+              />
+              Original</label
+            ><label
+              ><input
+                type="checkbox"
+                [checked]="project.appearance.reconstruction"
+                (change)="setLayer('reconstruction', $any($event.target).checked)"
+              />
+              Curva completa</label
+            ><label
+              ><input
+                type="checkbox"
+                [checked]="project.appearance.trace"
+                (change)="setLayer('trace', $any($event.target).checked)"
+              />
+              Trazo progresivo</label
+            ><label
+              ><input
+                type="checkbox"
+                [checked]="project.appearance.grid"
+                (change)="setLayer('grid', $any($event.target).checked)"
+              />
+              Cuadrícula</label
+            >
+            @if (dimension === 3) {
+              <label
+                ><input
+                  type="checkbox"
+                  [checked]="project.appearance.sculpture"
+                  (change)="setLayer('sculpture', $any($event.target).checked)"
+                />
+                Escultura tubular</label
+              >
+            }
+          </div>
+          <div class="appearance-row">
+            <studio-options
+              label="Color"
+              [options]="[
+                { value: '#d4f477', label: 'Lima', color: '#d4f477' },
+                { value: '#ffa68b', label: 'Coral', color: '#ffa68b' },
+                { value: '#89dce6', label: 'Hielo', color: '#89dce6' },
+              ]"
+              [value]="project.appearance.color"
+              (valueChange)="store.edit(patchColor($event), false)"
+            />
+          </div>
+        </div>
+      </details>
+    </aside>
+  </main>
+  <studio-math-panel />
+  <input
+    #file
+    class="sr-only"
+    hidden
+    type="file"
+    accept=".json,.svg,application/json,image/svg+xml"
+    (change)="importFile($event)"
+    aria-label="Importar proyecto o SVG"
+  />
+  <dialog #dialog (cancel)="close()" aria-labelledby="dialog-title">
+    <div class="dialog-top">
+      <span class="eyebrow">TU ESTUDIO</span
+      ><button class="quiet" (click)="close()" aria-label="Cerrar diálogo">×</button>
+    </div>
+    @if (modal() === 'library') {
+      <h2 id="dialog-title">Biblioteca local</h2>
+      <p>Creaciones guardadas en este navegador.</p>
+      @for (p of store.library(); track p.id) {
+        <div class="library-row">
+          <div>
+            <strong>{{ p.name }}</strong
+            ><small
+              >{{ p.dimension }}D ·
+              {{ p.source.kind.startsWith('manual') ? 'Composición' : 'Reconstrucción' }}</small
+            >
+          </div>
+          <button (click)="openProject(p)">Abrir</button
+          ><button (click)="openProject(p, true)">Duplicar</button
+          ><button (click)="removeProject(p)" [attr.aria-label]="'Eliminar ' + p.name">×</button>
+        </div>
+      } @empty {
+        <p class="empty">Tu primera curva está esperando. Guárdala desde el estudio.</p>
+      }
+    }
+    @if (modal() === 'import' || modal() === 'lift') {
+      <h2 id="dialog-title">
+        {{ modal() === 'lift' ? 'Una copia con profundidad' : 'Abrir como copia' }}
+      </h2>
+      <p>
+        <strong>{{ preview()?.name }}</strong> · {{ preview()?.dimension }}D
+      </p>
+      <p>
+        {{
+          modal() === 'lift'
+            ? 'Se utiliza la curva completa con la selección actual, elevada con los parámetros elegidos. La copia tiene 256 controles; el original se conserva.'
+            : 'Se validó el archivo. La copia tendrá un identificador nuevo.'
+        }}
+      </p>
+      <svg
+        class="import-preview"
+        viewBox="0 0 300 150"
+        role="img"
+        aria-label="Vista previa de la geometría, proyección XY"
+      >
+        <polyline [attr.points]="previewPolygon()" fill="none" stroke="#d4f477" stroke-width="2" />
+      </svg>
+      @if (modal() === 'lift') {
+        <div class="numeric-row">
+          <label
+            >Amplitud Z<input
+              type="number"
+              min="0"
+              max="2"
+              step="0.05"
+              [(ngModel)]="liftAmplitude"
+              (change)="updateLift()" /></label
+          ><label
+            >Frecuencia Z<input
+              type="number"
+              min="1"
+              max="32"
+              step="1"
+              [(ngModel)]="liftFrequency"
+              (change)="updateLift()" /></label
+          ><label
+            >Fase Z °<input
+              type="number"
+              min="0"
+              max="360"
+              step="5"
+              [(ngModel)]="liftPhase"
+              (change)="updateLift()"
+          /></label>
+        </div>
+        <p class="helper">
+          Reducción a 256 controles por longitud de arco. Error XY normalizado: RMS
+          {{ liftError.rms | number: '1.5-5' }}, máximo {{ liftError.max | number: '1.5-5' }}. Copia
+          como polilínea para conservar la aproximación medida.
+        </p>
+      }
+      <button class="primary full" (click)="preview() && openProject(preview()!, true)">
+        Abrir como copia
+      </button>
+    }
+    @if (modal() === 'delete') {
+      <h2 id="dialog-title">Eliminar {{ preview()?.name }}</h2>
+      <p>Se eliminará la copia de este navegador. Descarga JSON antes si necesitas conservarla.</p>
+      <button class="danger" (click)="confirmDelete()">Eliminar proyecto</button>
+    }
+    @if (modal() === 'share') {
+      <h2 id="dialog-title">Compartir creación</h2>
+      <label
+        >Copia este enlace<input [value]="share()" readonly (focus)="$any($event.target).select()"
+      /></label>
+      <p>Cualquier persona que tenga el enlace puede abrir la creación.</p>
+    }
+    @if (modal() === 'svg') {
+      <h2 id="dialog-title">Elegir trayectoria SVG</h2>
+      <p>Selecciona una trayectoria. Los contornos se importan por separado.</p>
+      <studio-options
+        label="Cierre de una trayectoria abierta"
+        [options]="[
+          { value: 'segment', label: 'Conectar extremos con un segmento', icon: 'close-path' },
+          { value: 'return', label: 'Regresar por el mismo recorrido', icon: 'return-path' },
+        ]"
+        [value]="svgClosure"
+        (valueChange)="svgClosure = $any($event)"
+      />
+      @for (path of svgPaths(); track $index; let i = $index) {
+        <button class="full" (click)="importPath(i)">{{ path.name }}</button>
+      }
+    }
+  </dialog>
+</div>

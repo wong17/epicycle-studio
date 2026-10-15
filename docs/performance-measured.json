@@ -1,0 +1,37 @@
+{
+  "viewport": {
+    "width": 1440,
+    "height": 900
+  },
+  "flat": {
+    "count": 151,
+    "p50": 16.699999999999818,
+    "p95": 16.700000000000273,
+    "p99": 16.799999999999955,
+    "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/156.0.8078.4 Safari/537.36",
+    "dpr": 1
+  },
+  "spatial": {
+    "count": 152,
+    "p50": 16.699999999999818,
+    "p95": 16.700000000000728,
+    "p99": 16.800000000000182,
+    "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/156.0.8078.4 Safari/537.36",
+    "dpr": 1
+  },
+  "drawCalls": 38,
+  "loaded2d": [
+    "http://127.0.0.1:4200/studio/2d",
+    "http://127.0.0.1:4200/main-XMY46Q6S.js",
+    "http://127.0.0.1:4200/styles-N2BWAFDC.css",
+    "http://127.0.0.1:4200/chunk-Cn7aKKzd.js",
+    "http://127.0.0.1:4200/chunk-CkEOMKBv.js",
+    "http://127.0.0.1:4200/worker-XG5NJT4H.js",
+    "http://127.0.0.1:4200/worker-XG5NJT4H.js"
+  ],
+  "additional3d": [
+    "http://127.0.0.1:4200/chunk-BuJfo5-7.js",
+    "http://127.0.0.1:4200/chunk-Tpp9qjbp.js",
+    "http://127.0.0.1:4200/chunk-DrPYeOCf.js"
+  ]
+}
