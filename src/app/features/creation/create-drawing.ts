@@ -1,3 +1,4 @@
+import { StudioTooltip } from '../studio/studio-tooltip';
 import {
   AfterViewInit,
   Component,
@@ -25,7 +26,7 @@ type CreationMode = 'gallery' | 'text' | 'svg' | 'photo';
 
 @Component({
   selector: 'studio-create-drawing',
-  imports: [FormsModule, StudioIcon],
+  imports: [FormsModule, StudioIcon, StudioTooltip],
   templateUrl: './create-drawing.html',
   styleUrl: './create-drawing.scss',
 })

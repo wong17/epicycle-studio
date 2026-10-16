@@ -408,12 +408,6 @@ canvas {
 .zoom-tools {
   max-height: calc(100dvh - var(--chrome-top) - 106px);
 }
-.zoom-tools .icon-button::after {
-  left: auto;
-  right: calc(100% + 8px);
-  top: 50%;
-  transform: translateY(-50%);
-}
 @media (max-width: 700px) {
   .studio:not(.inspector-closed) .canvas-toolbar {
     visibility: hidden;

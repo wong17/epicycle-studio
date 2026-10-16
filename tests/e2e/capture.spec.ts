@@ -143,20 +143,7 @@ test('exportHoverOnlyShowsNonEmptyHintsAndDoesNotLeaveMouseFocusHints', async ({
   await page.getByRole('button', { name: 'Exportar y compartir', exact: true }).click();
   const image = page.getByRole('button', { name: 'Previsualizar imagen', exact: true });
   const video = page.getByRole('button', { name: 'Previsualizar video', exact: true });
-  const hints = () =>
-    page.locator('.icon-button').evaluateAll((buttons) =>
-      buttons.flatMap((button) => {
-        const style = getComputedStyle(button, '::after');
-        if (
-          style.visibility !== 'visible' ||
-          style.opacity === '0' ||
-          style.content === 'none' ||
-          style.content === 'normal'
-        )
-          return [];
-        return [style.content.replace(/^["']|["']$/g, '')];
-      }),
-    );
+  const hints = () => page.getByRole('tooltip').allTextContents();
   await image.click();
   await video.hover();
   await expect.poll(hints).toEqual(['Previsualizar video']);
@@ -169,13 +156,9 @@ test('exportHoverOnlyShowsNonEmptyHintsAndDoesNotLeaveMouseFocusHints', async ({
   const refresh = page.getByRole('button', { name: 'Actualizar vista previa', exact: true });
   await expect(refresh).toBeFocused();
   await expect.poll(hints).toEqual(['Actualizar vista previa']);
-  const hintBounds = await refresh.evaluate((button) => {
-    const style = getComputedStyle(button, '::after');
-    if (style.transform !== 'none') throw new Error('End-aligned hint must not be translated');
-    const right = button.getBoundingClientRect().right - parseFloat(style.right);
-    return { left: right - parseFloat(style.width), right, viewport: innerWidth };
-  });
-  expect(hintBounds.left).toBeGreaterThanOrEqual(0);
-  expect(hintBounds.right).toBeLessThanOrEqual(hintBounds.viewport);
+  const hintBounds = await page.getByRole('tooltip').boundingBox();
+  expect(hintBounds!.x).toBeGreaterThanOrEqual(0);
+  expect(hintBounds!.x + hintBounds!.width).toBeLessThanOrEqual(page.viewportSize()!.width);
+  await expect(page.locator('.icon-button[data-tooltip][title]')).toHaveCount(0);
   await page.screenshot({ path: test.info().outputPath('export-hover-hint.png') });
 });

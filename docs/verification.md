@@ -137,3 +137,13 @@ Se sustituyeron argumentos booleanos de carga por `ProjectLoadOptions` para dist
 - `recoveredDraftRemainsUnsavedUntilExplicitSave`: estado y limpieza tras guardado explícito.
 - `doesNotOfferTimestampOnlyCopiesOrVersionsOlderThanSaved`: filtrado de copias sin cambios y versiones antiguas.
 - Build, lint y comprobaciones estrictas sin diagnósticos de aplicación. El último ajuste tipográfico también pasó `creatorFitsMobileAndHasAccessibleControls` en WebKit.
+
+## Tooltips e inspector adaptable — 2026-10-16
+
+Se eliminó la combinación de ayuda CSS y `title` nativo. Una directiva tipada comparte una única ayuda CDK fuera del contenido desplazable, con descripción accesible, soporte de teclado y cierre con Escape. Los cambios de acción eliminan el texto anterior. Las ayudas CSS ocultas contribuían al ancho desplazable del inspector; los grupos y campos ahora admiten varias filas y columnas de ancho mínimo cero.
+
+- `toolbarUsesOneAccessibleTooltipWithoutNativeDuplicate`: una sola ayuda, sin `title`, teclado, Escape y diálogo de creación.
+- `inspectorWrapsAllControlsWithoutHorizontalScroll`: 1440, 800, 360 y 320 px, 2D y composición 3D; límites de botones/campos, filas de ejemplos y ausencia de desplazamiento horizontal.
+- `keyboardPlaybackDoesNotKeepAnOutdatedTooltip`: cambio Reproducir/Pausar sin ayuda obsoleta.
+- `capture.spec.ts` y `tooltips-layout.spec.ts`: **18/18 escenarios aprobados** en Chromium, Firefox y WebKit. Inspección visual de la captura a 320 px.
+- **172 pruebas unitarias aprobadas**, lint y build de producción sin diagnósticos de aplicación. Las vistas móviles son emuladas en navegador.

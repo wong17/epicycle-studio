@@ -1,3 +1,4 @@
+import { StudioTooltip } from './studio-tooltip';
 import { CreateDrawing } from '../creation/create-drawing';
 import type { DrawingDraft } from '../../domain/creation/types';
 import { CaptureOptions } from './capture-options';
@@ -45,6 +46,7 @@ import {
     DecimalPipe,
     RouterLink,
     StudioIcon,
+    StudioTooltip,
     MathPanel,
     OptionStrip,
     CaptureOptions,

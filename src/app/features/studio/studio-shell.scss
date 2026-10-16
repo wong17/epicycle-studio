@@ -19,7 +19,7 @@ a:not(.brand):hover {
 }
 .stats {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   border: 1px solid var(--line);
   border-radius: 5px;
   padding: 12px;
@@ -43,7 +43,7 @@ a:not(.brand):hover {
 }
 .layers {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 .layers label {
   display: flex;
@@ -99,7 +99,7 @@ details label {
 }
 .numeric-row {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(auto-fit, minmax(min(84px, 100%), 1fr));
   gap: 8px;
 }
 .numeric-row label {
@@ -310,11 +310,6 @@ h1 {
 .learn-link:hover {
   background: var(--line);
 }
-.header-actions .icon-button:last-child::after {
-  left: auto;
-  right: 0;
-  transform: none;
-}
 .canvas-toolbar {
   position: absolute;
   left: 16px;
@@ -338,12 +333,6 @@ h1 {
 .canvas-toolbar > .quiet {
   border-top: 1px solid var(--line);
   border-radius: 0 0 6px 6px;
-}
-.tools .icon-button::after,
-.canvas-toolbar > .icon-button::after {
-  top: 50%;
-  left: calc(100% + 10px);
-  transform: translateY(-50%);
 }
 .canvas-caption {
   position: absolute;
@@ -390,7 +379,8 @@ h1 {
   right: var(--chrome-edge);
   width: var(--inspector-width);
   max-height: calc(100dvh - var(--chrome-top) - 110px);
-  overflow: auto;
+  overflow-y: auto;
+  overflow-x: hidden;
   overscroll-behavior: contain;
   scrollbar-width: thin;
   scrollbar-color: #555555 transparent;
@@ -416,11 +406,6 @@ h1 {
   min-height: 28px;
   height: 28px;
   padding: 4px;
-}
-.inspector-heading button::after {
-  left: auto;
-  right: 0;
-  transform: none;
 }
 .panel {
   padding: 16px;
@@ -479,10 +464,6 @@ h1 {
 }
 .timeline {
   min-width: 0;
-}
-.transport .icon-button::after {
-  top: auto;
-  bottom: calc(100% + 10px);
 }
 
 .transport-closed .transport {
@@ -557,4 +538,33 @@ h1 {
 }
 [hidden] {
   display: none !important;
+}
+
+.inspector .section-content {
+  min-width: 0;
+}
+.inspector input {
+  min-width: 0;
+  max-width: 100%;
+}
+.inspector .source-tabs,
+.inspector .button-row {
+  flex-wrap: wrap;
+}
+.inspector .source-tabs .icon-button,
+.inspector .button-row .icon-button {
+  flex: 1 1 80px;
+  min-width: 0;
+}
+.inspector .layers label {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.inspector .stats > div,
+.inspector .numeric-row > label {
+  min-width: 0;
+}
+
+.inspector .stats strong {
+  overflow-wrap: anywhere;
 }

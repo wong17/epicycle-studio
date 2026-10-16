@@ -1,3 +1,4 @@
+import { StudioTooltip } from './studio-tooltip';
 import { Component, computed, inject } from '@angular/core';
 import { DecimalPipe } from '@angular/common';
 import { StudioStore } from './studio-store';
@@ -5,7 +6,7 @@ import { StudioIcon } from './studio-icon';
 
 @Component({
   selector: 'studio-math-panel',
-  imports: [DecimalPipe, StudioIcon],
+  imports: [DecimalPipe, StudioIcon, StudioTooltip],
   template: `
     @if (store.mathOpen()) {
       <section id="animation-math" aria-labelledby="math-title" class="math-panel" tabindex="0">
@@ -91,7 +92,6 @@ import { StudioIcon } from './studio-icon';
       [attr.aria-expanded]="store.mathOpen()"
       aria-controls="animation-math"
       aria-label="Datos matemáticos"
-      title="Datos matemáticos"
       data-tooltip="Datos matemáticos"
     >
       <studio-icon name="math" />

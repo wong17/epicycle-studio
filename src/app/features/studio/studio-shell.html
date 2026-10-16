@@ -59,7 +59,6 @@
         [attr.aria-pressed]="dimension === 2"
         (click)="switchMode(2)"
         class="icon-button"
-        title="Plano 2D"
         data-tooltip="Plano 2D"
         aria-label="Plano 2D"
       >
@@ -69,7 +68,6 @@
         [attr.aria-pressed]="dimension === 3"
         (click)="switchMode(3)"
         class="icon-button"
-        title="Espacio 3D"
         data-tooltip="Espacio 3D"
         aria-label="Espacio 3D"
       >
@@ -81,7 +79,6 @@
         #creationTrigger
         (click)="openCreator()"
         class="icon-button"
-        title="Crear desde…"
         data-tooltip="Crear desde…"
         aria-label="Crear desde…"
       >
@@ -93,7 +90,6 @@
       ><button
         (click)="open('library')"
         class="icon-button"
-        title="Biblioteca"
         data-tooltip="Biblioteca"
         aria-label="Biblioteca"
       >
@@ -102,7 +98,6 @@
         class="primary icon-button"
         [disabled]="store.busy()"
         (click)="save()"
-        title="Guardar ↗"
         data-tooltip="Guardar ↗"
         aria-label="Guardar ↗"
       >
@@ -112,7 +107,6 @@
         (click)="file.click()"
         aria-label="Importar proyecto o SVG"
         class="icon-button"
-        title="Importar proyecto o SVG"
         data-tooltip="Importar proyecto o SVG"
       >
         <studio-icon name="import" /><span class="sr-only">Importar</span>
@@ -125,7 +119,6 @@
         aria-controls="export-popover"
         aria-label="Exportar y compartir"
         class="icon-button"
-        title="Exportar y compartir"
         data-tooltip="Exportar y compartir"
       >
         <studio-icon name="export" /><span class="sr-only">Exportar</span>
@@ -137,7 +130,6 @@
         aria-controls="curve-inspector"
         aria-label="Mostrar u ocultar inspector"
         class="icon-button"
-        title="Mostrar u ocultar inspector"
         data-tooltip="Mostrar u ocultar inspector"
       >
         <studio-icon name="panel" /><span class="sr-only">Inspector</span>
@@ -151,7 +143,6 @@
         class="quiet icon-button"
         (click)="store.notice.set('')"
         aria-label="Cerrar aviso"
-        title="Cerrar aviso"
         data-tooltip="Cerrar aviso"
       >
         <studio-icon name="close" /><span class="sr-only">×</span>
@@ -180,7 +171,6 @@
         [class.selected]="captureMode === 'image'"
         [attr.aria-pressed]="captureMode === 'image'"
         (click)="configureCapture('image')"
-        title="Previsualizar imagen"
         data-tooltip="Previsualizar imagen"
         aria-label="Previsualizar imagen"
       >
@@ -191,7 +181,6 @@
         [class.selected]="captureMode === 'video'"
         [attr.aria-pressed]="captureMode === 'video'"
         (click)="configureCapture('video')"
-        title="Previsualizar video"
         data-tooltip="Previsualizar video"
         aria-label="Previsualizar video"
       >
@@ -201,9 +190,7 @@
       <button
         class="icon-button"
         (click)="refreshCapture()"
-        title="Actualizar vista previa"
         data-tooltip="Actualizar vista previa"
-        data-tooltip-align="end"
         aria-label="Actualizar vista previa"
       >
         <studio-icon name="rotate" />
@@ -222,7 +209,6 @@
         class="icon-button"
         (click)="png()"
         [disabled]="store.busy() || recording()"
-        title="Imagen PNG"
         data-tooltip="Imagen PNG"
         aria-label="Imagen PNG"
       >
@@ -233,7 +219,6 @@
           class="icon-button"
           (click)="exportSvg()"
           [disabled]="store.busy() || recording()"
-          title="Vector SVG"
           data-tooltip="Vector SVG"
           aria-label="Vector SVG"
         >
@@ -267,7 +252,6 @@
         class="icon-button"
         (click)="exportJson()"
         [disabled]="store.busy() || recording()"
-        title="Proyecto JSON"
         data-tooltip="Proyecto JSON"
         aria-label="Proyecto JSON"
       >
@@ -276,7 +260,6 @@
         class="icon-button"
         (click)="copyLink()"
         [disabled]="store.busy() || recording()"
-        title="Copiar enlace"
         data-tooltip="Copiar enlace"
         aria-label="Copiar enlace"
       >
@@ -287,7 +270,6 @@
           class="icon-button"
           (click)="glb()"
           [disabled]="store.busy() || recording()"
-          title="Escultura GLB"
           data-tooltip="Escultura GLB"
           aria-label="Escultura GLB"
         >
@@ -326,7 +308,6 @@
           class="full icon-button"
           [disabled]="store.busy()"
           (click)="saveProjection()"
-          title="Guardar proyección como proyecto 2D →"
           data-tooltip="Guardar proyección como proyecto 2D →"
           aria-label="Guardar proyección como proyecto 2D →"
         >
@@ -339,7 +320,6 @@
         <button
           class="full lift icon-button"
           (click)="lift()"
-          title="Llevar una copia a 3D →"
           data-tooltip="Llevar una copia a 3D →"
           aria-label="Llevar una copia a 3D →"
         >
@@ -350,7 +330,6 @@
           <button
             class="full icon-button"
             (click)="exportV1()"
-            title="Descargar JSON V1 · sólo 2D"
             data-tooltip="Descargar JSON V1 · sólo 2D"
             aria-label="Descargar JSON V1 · sólo 2D"
           >
@@ -365,7 +344,6 @@
         class="icon-button"
         (click)="cancelVideo()"
         [disabled]="false"
-        title="Cancelar grabación"
         data-tooltip="Cancelar grabación"
         aria-label="Cancelar grabación"
       >
@@ -376,8 +354,7 @@
         class="full icon-button"
         (click)="video()"
         [disabled]="store.busy() || !videoAvailable"
-        [title]="'Grabar un ciclo · ' + 8 / project.playback.speed + ' s'"
-        [attr.data-tooltip]="'Grabar un ciclo · ' + 8 / project.playback.speed + ' s'"
+        [data-tooltip]="'Grabar un ciclo · ' + 8 / project.playback.speed + ' s'"
         [attr.aria-label]="'Grabar un ciclo · ' + 8 / project.playback.speed + ' s'"
       >
         <studio-icon name="video" /><span class="video-label">Exportar video</span>
@@ -410,7 +387,6 @@
           (click)="toolsOpen.set(!toolsOpen())"
           [attr.aria-expanded]="toolsOpen()"
           aria-label="Expandir o colapsar herramientas"
-          title="Expandir o colapsar herramientas"
           data-tooltip="Expandir o colapsar herramientas"
         >
           <studio-icon name="panel" />
@@ -420,7 +396,6 @@
             [class.selected]="tool() === 'explore'"
             (click)="chooseTool('explore')"
             class="icon-button"
-            title="↖ Explorar"
             data-tooltip="↖ Explorar"
             aria-label="↖ Explorar"
           >
@@ -431,7 +406,6 @@
               [class.selected]="tool() === 'draw'"
               (click)="chooseTool('draw')"
               class="icon-button"
-              title="✎ Dibujar"
               data-tooltip="✎ Dibujar"
               aria-label="✎ Dibujar"
             >
@@ -443,7 +417,6 @@
               [disabled]="
                 store.busy() || (drawing() ? !pending() : project.source.kind !== 'curve2d')
               "
-              title="Editar trazo"
               data-tooltip="Editar trazo"
               aria-label="Editar trazo"
             >
@@ -453,7 +426,6 @@
               (click)="clearDrawing()"
               [disabled]="store.busy() || recording()"
               class="icon-button"
-              title="Limpiar lienzo y dibujar desde cero"
               data-tooltip="Limpiar lienzo y dibujar desde cero"
               aria-label="Limpiar lienzo"
             >
@@ -463,7 +435,6 @@
               [class.selected]="tool() === 'pan'"
               (click)="chooseTool('pan')"
               class="icon-button"
-              title="↔ Mover"
               data-tooltip="↔ Mover"
               aria-label="↔ Mover"
             >
@@ -474,7 +445,6 @@
               [class.selected]="tool() === 'points'"
               (click)="chooseTool('points')"
               class="icon-button"
-              title="⊕ Editar puntos"
               data-tooltip="⊕ Editar puntos"
               aria-label="⊕ Editar puntos"
             >
@@ -488,7 +458,6 @@
             [disabled]="drawing() || store.busy()"
             aria-label="Deshacer"
             class="icon-button"
-            title="Deshacer"
             data-tooltip="Deshacer"
           >
             <studio-icon name="undo" /><span class="sr-only">↶</span></button
@@ -497,7 +466,6 @@
             [disabled]="drawing() || store.busy()"
             aria-label="Rehacer"
             class="icon-button"
-            title="Rehacer"
             data-tooltip="Rehacer"
           >
             <studio-icon name="redo" /><span class="sr-only">↷</span>
@@ -507,7 +475,6 @@
           class="quiet icon-button"
           [hidden]="!toolsOpen()"
           (click)="fit()"
-          title="Ajustar vista ⛶"
           data-tooltip="Ajustar vista ⛶"
           aria-label="Ajustar vista ⛶"
         >
@@ -547,7 +514,6 @@
             (click)="zoom(0.8)"
             aria-label="Acercar"
             class="icon-button"
-            title="Acercar"
             data-tooltip="Acercar"
           >
             <studio-icon name="plus" /><span class="sr-only">+</span></button
@@ -555,7 +521,6 @@
             (click)="zoom(1.25)"
             aria-label="Alejar"
             class="icon-button"
-            title="Alejar"
             data-tooltip="Alejar"
           >
             <studio-icon name="minus" /><span class="sr-only">−</span>
@@ -576,8 +541,7 @@
                 [class.selected]="project.view.camera === view.id"
                 [attr.aria-pressed]="project.view.camera === view.id"
                 [attr.aria-label]="view.label"
-                [title]="view.label"
-                [attr.data-tooltip]="view.label"
+                [data-tooltip]="view.label"
               >
                 <studio-icon [name]="view.icon" />
               </button>
@@ -586,7 +550,6 @@
               (click)="rotate()"
               aria-label="Rotar cámara"
               class="icon-button"
-              title="Rotar cámara"
               data-tooltip="Rotar cámara"
             >
               <studio-icon name="rotate" /><span class="sr-only">↻</span>
@@ -615,7 +578,6 @@
                 (click)="confirmDrawing('return')"
                 [disabled]="!pending() || store.busy()"
                 aria-label="Animar dibujo"
-                title="Animar dibujo"
                 data-tooltip="Animar dibujo"
               >
                 <studio-icon name="play" />
@@ -625,7 +587,6 @@
                 (click)="confirmDrawing('segment')"
                 [disabled]="!pending() || store.busy()"
                 aria-label="Conectar extremos y animar"
-                title="Conectar extremos y animar"
                 data-tooltip="Conectar extremos y animar"
               >
                 <studio-icon name="close-path" />
@@ -635,7 +596,6 @@
                 (click)="clearDrawing()"
                 [disabled]="store.busy()"
                 aria-label="Limpiar y empezar de nuevo"
-                title="Limpiar y empezar de nuevo"
                 data-tooltip="Limpiar y empezar de nuevo"
               >
                 <studio-icon name="erase" />
@@ -645,7 +605,6 @@
                 (click)="cancelDrawing()"
                 [disabled]="store.busy()"
                 aria-label="Cancelar dibujo"
-                title="Cancelar dibujo"
                 data-tooltip="Cancelar dibujo"
               >
                 <studio-icon name="close" />
@@ -660,7 +619,6 @@
           [attr.aria-expanded]="transportOpen()"
           aria-label="Expandir o colapsar reproducción"
           class="icon-button"
-          title="Expandir o colapsar reproducción"
           data-tooltip="Expandir o colapsar reproducción"
         >
           <studio-icon name="timeline" /><span class="sr-only">Reproducción</span>
@@ -670,8 +628,7 @@
           (click)="togglePlay()"
           [disabled]="store.busy() || (drawing() && !pending())"
           [attr.aria-label]="store.playing() ? 'Pausar' : 'Reproducir'"
-          [title]="store.playing() ? 'Pausar' : 'Reproducir'"
-          [attr.data-tooltip]="store.playing() ? 'Pausar' : 'Reproducir'"
+          [data-tooltip]="store.playing() ? 'Pausar' : 'Reproducir'"
         >
           <studio-icon [name]="store.playing() ? 'pause' : 'play'" /><span class="sr-only">
             {{ store.playing() ? 'Ⅱ' : '▶' }}</span
@@ -680,7 +637,6 @@
           class="quiet icon-button"
           (click)="store.clock.reset(); store.seek(0)"
           aria-label="Reiniciar"
-          title="Reiniciar"
           data-tooltip="Reiniciar"
         >
           <studio-icon name="rotate" /><span class="sr-only"> ↺ </span>
@@ -734,7 +690,6 @@
           (click)="collapseInspector()"
           aria-label="Colapsar inspector"
           class="icon-button"
-          title="Colapsar inspector"
           data-tooltip="Colapsar inspector"
         >
           <studio-icon name="collapse" /><span class="sr-only">Cerrar</span>
@@ -748,7 +703,6 @@
               [class.selected]="!manual"
               (click)="setPreset(dimension === 2 ? 'heart' : 'trefoil')"
               class="icon-button"
-              title="Reconstruir"
               data-tooltip="Reconstruir"
               aria-label="Reconstruir"
             >
@@ -757,7 +711,6 @@
               [class.selected]="manual"
               (click)="selectManual()"
               class="icon-button"
-              title="Componer"
               data-tooltip="Componer"
               aria-label="Componer"
             >
@@ -790,8 +743,7 @@
               <button
                 (click)="dimension === 2 ? chooseTool('draw') : newSpatial()"
                 class="icon-button"
-                [title]="dimension === 2 ? 'Dibujar mi curva' : 'Crear curva espacial'"
-                [attr.data-tooltip]="dimension === 2 ? 'Dibujar mi curva' : 'Crear curva espacial'"
+                [data-tooltip]="dimension === 2 ? 'Dibujar mi curva' : 'Crear curva espacial'"
                 [attr.aria-label]="
                   dimension === 2 ? '✎ Dibujar mi curva' : '⊕ Crear curva espacial'
                 "
@@ -802,7 +754,6 @@
               ><button
                 (click)="file.click()"
                 class="icon-button"
-                title="Importar ↥"
                 data-tooltip="Importar ↥"
                 aria-label="Importar ↥"
               >
@@ -1021,22 +972,19 @@
                     (click)="store.circleAction(i, 'up')"
                     [attr.aria-label]="'Subir círculo ' + (i + 1)"
                     class="icon-button"
-                    [title]="'Subir círculo ' + (i + 1)"
-                    [attr.data-tooltip]="'Subir círculo ' + (i + 1)"
+                    [data-tooltip]="'Subir círculo ' + (i + 1)"
                   >
                     <studio-icon name="up" /><span class="sr-only"> ↑</span></button
                   ><button
                     (click)="store.circleAction(i, 'down')"
                     [attr.aria-label]="'Bajar círculo ' + (i + 1)"
                     class="icon-button"
-                    [title]="'Bajar círculo ' + (i + 1)"
-                    [attr.data-tooltip]="'Bajar círculo ' + (i + 1)"
+                    [data-tooltip]="'Bajar círculo ' + (i + 1)"
                   >
                     <studio-icon name="down" /><span class="sr-only"> ↓</span></button
                   ><button
                     (click)="store.circleAction(i, 'duplicate')"
                     class="icon-button"
-                    title="Duplicar"
                     data-tooltip="Duplicar"
                     aria-label="Duplicar"
                   >
@@ -1046,8 +994,7 @@
                     [disabled]="circles.length === 1"
                     [attr.aria-label]="'Eliminar círculo ' + (i + 1)"
                     class="icon-button"
-                    [title]="'Eliminar círculo ' + (i + 1)"
-                    [attr.data-tooltip]="'Eliminar círculo ' + (i + 1)"
+                    [data-tooltip]="'Eliminar círculo ' + (i + 1)"
                   >
                     <studio-icon name="close" /><span class="sr-only"> × </span>
                   </button>
@@ -1058,7 +1005,6 @@
               class="full icon-button"
               [disabled]="circles.length >= 32"
               (click)="store.circleAction(0, 'add')"
-              title="+ Añadir círculo"
               data-tooltip="+ Añadir círculo"
               aria-label="+ Añadir círculo"
             >
@@ -1147,8 +1093,7 @@
                       [disabled]="controlPoints.length <= 4"
                       [attr.aria-label]="'Eliminar punto ' + (i + 1)"
                       class="icon-button"
-                      [title]="'Eliminar punto ' + (i + 1)"
-                      [attr.data-tooltip]="'Eliminar punto ' + (i + 1)"
+                      [data-tooltip]="'Eliminar punto ' + (i + 1)"
                     >
                       <studio-icon name="close" /><span class="sr-only"> × </span>
                     </button>

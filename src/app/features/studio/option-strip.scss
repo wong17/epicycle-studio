@@ -92,6 +92,9 @@ studio-icon {
   pointer-events: none;
 }
 @media (max-width: 700px) {
+  .choice-row {
+    grid-template-columns: repeat(auto-fit, minmax(min(64px, 100%), 1fr));
+  }
   .compact-choice {
     min-height: 44px;
   }

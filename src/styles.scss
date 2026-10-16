@@ -126,35 +126,6 @@ input[type='range'] {
   border: 1px solid transparent;
   border-radius: 7px;
 }
-.studio .icon-button[data-tooltip]:not([data-tooltip=''])::after {
-  content: attr(data-tooltip);
-  position: absolute;
-  z-index: 30;
-  top: calc(100% + 8px);
-  left: 50%;
-  transform: translateX(-50%);
-  padding: 7px 10px;
-  border: 1px solid #555555;
-  border-radius: 5px;
-  background: #303030;
-  color: var(--text);
-  box-shadow: 0 4px 15px #0006;
-  font: 11px/1.4 system-ui;
-  white-space: nowrap;
-  pointer-events: none;
-  opacity: 0;
-  visibility: hidden;
-}
-.studio .icon-button[data-tooltip]:not([data-tooltip='']):hover::after,
-.studio .icon-button[data-tooltip]:not([data-tooltip='']):focus-visible::after {
-  opacity: 1;
-  visibility: visible;
-}
-.studio .icon-button[data-tooltip]:not([data-tooltip=''])[data-tooltip-align='end']::after {
-  left: auto;
-  right: 0;
-  transform: none;
-}
 .studio .selected {
   background: #d4f47716 !important;
   color: var(--accent);
@@ -196,15 +167,4 @@ input[type='range'] {
 .studio a,
 .studio summary {
   -webkit-tap-highlight-color: transparent;
-}
-@media (hover: none) {
-  .studio .icon-button:hover::after,
-  .studio .icon-button:focus::after {
-    opacity: 0;
-    visibility: hidden;
-  }
-  .studio .icon-button:focus-visible::after {
-    opacity: 1;
-    visibility: visible;
-  }
 }
