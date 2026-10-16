@@ -94,3 +94,11 @@ Actualización de posición del zoom: el inspector ocupa el borde derecho; abier
 - La regresión del shell exporta el proyecto inicial 3D y comprueba órbitas y vectores activos. Las capturas actuales muestran el nombre ampliado y se conservan únicamente escritorio, móvil y 3D en `docs/screenshots/studio-*.png`; los informes/capturas automáticas se generan en rutas ignoradas.
 - Build estático: `dist/epicycle-studio/browser`; el proceso añade los avisos de terceros. ZIP para carga manual: `artifacts/epicycle-studio-cloudflare-pages.zip`, con SHA-256 adyacente. No contiene fuentes, datos de IndexedDB, herramientas locales ni credenciales.
 - `plan.md` conserva pendientes; no se atribuyen a esta entrega publicación HTTPS, CI alojada, flags estrictos completos ni dispositivos físicos. Persiste el aviso de tamaño CSS; su reducción permanece pendiente.
+
+## Opciones de captura
+
+`captureBackgroundGridZoomAndIndependentVideoSettings` verifica píxeles PNG (oscuro, cuadrícula y transparencia), fondo SVG, ampliación de la vista previa y separación de opciones imagen/video. `capturePanelFitsMobileAndSpatialPngKeepsDarkBackground` verifica límites del panel móvil, negro/transparencia PNG en 3D y liberación del renderizador auxiliar. `flatAnimationVideoCanCancelAndExportsMovingFramesWithoutChangingPhase` decodifica el video exportado, comprueba movimiento entre fotogramas, formato vertical y fondo negro, además de cancelación y conservación de la fase del editor.
+
+## Precisión y edición de dibujos
+
+`termSliderKeepsAccentControlsStableAndPlaybackRunning` registra opacidad, estado de Guardar y reproducción durante movimientos consecutivos del slider. `complexFreehandGetsAdaptiveDetailAndCanBeEditedAndColored` dibuja una curva de 19 lóbulos, comprueba selección automática superior a 64 términos, deforma sus puntos sin cambiar su cantidad y verifica RGB en el lienzo y JSON. La recomendación también tiene una comprobación matemática de las cotas de error; los proyectos anteriores siguen importándose sin los campos opcionales nuevos.

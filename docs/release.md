@@ -1,6 +1,6 @@
 # Preparación de publicación
 
-**Estado:** preparado para que el usuario lo suba a Cloudflare Pages. Aún no hay una URL pública comprobada ni un despliegue remoto realizado desde esta sesión.
+**Estado:** aplicación publicada en [Epicycle Studio](https://epicycle-studio.josuewong797.workers.dev/studio/2d) mediante Workers conectado a GitHub. Las comprobaciones de esta guía deben repetirse después de cada actualización.
 
 ## Workers conectado a GitHub
 

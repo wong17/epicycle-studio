@@ -9,9 +9,15 @@ export class CanvasRenderer {
   private width = 1;
   private height = 1;
   private revision = -1;
+  private inkBounds = [0, 0, 1, 1];
   drawing = false;
   previewStrokes: readonly (readonly Vec2[])[] = [];
   transparent = false;
+  background = '#151515';
+  editHandles = false;
+  orbitWidth = 1;
+  orbitColor = '#686868';
+  vectorColor = '#b7b7b7';
   constructor(
     readonly canvas: HTMLCanvasElement,
     private readonly store: StudioStore,
@@ -61,7 +67,7 @@ export class CanvasRenderer {
   private path(
     c: CanvasRenderingContext2D,
     s: CurveSamples,
-    color: string,
+    color: string | CanvasGradient,
     width: number,
     end = s.count,
     closed = true,
@@ -85,7 +91,7 @@ export class CanvasRenderer {
     if (this.revision !== this.store.revision()) {
       const cache = this.cache.getContext('2d')!;
       cache.setTransform(this.dpr, 0, 0, this.dpr, 0, 0);
-      cache.fillStyle = '#151515';
+      cache.fillStyle = this.background;
       cache.clearRect(0, 0, this.width, this.height);
       if (!this.transparent) cache.fillRect(0, 0, this.width, this.height);
       if (p.appearance.grid) {
@@ -107,8 +113,32 @@ export class CanvasRenderer {
         this.path(cache, this.store.reference, '#909090', 1.5);
         cache.setLineDash([]);
       }
-      if (!this.drawing && p.appearance.reconstruction && this.store.reconstruction)
+      if (
+        !this.drawing &&
+        p.appearance.colorMode !== 'spectrum' &&
+        p.appearance.reconstruction &&
+        this.store.reconstruction
+      )
         this.path(cache, this.store.reconstruction, p.appearance.color, p.appearance.width);
+      if (this.store.reconstruction) {
+        const data = this.store.reconstruction;
+        let x0 = Infinity,
+          y0 = Infinity,
+          x1 = -Infinity,
+          y1 = -Infinity;
+        for (let i = 0; i < data.count; i++) {
+          const [x, y] = this.viewport.worldToScreen(
+            this.projectPoint(
+              data.coordinates.subarray(i * data.dimension, (i + 1) * data.dimension),
+            ),
+          );
+          x0 = Math.min(x0, x);
+          y0 = Math.min(y0, y);
+          x1 = Math.max(x1, x);
+          y1 = Math.max(y1, y);
+        }
+        this.inkBounds = [x0, y0, Math.max(x0 + 1, x1), Math.max(y0 + 1, y1)];
+      }
       this.revision = this.store.revision();
     }
     c.setTransform(1, 0, 0, 1, 0, 0);
@@ -129,13 +159,37 @@ export class CanvasRenderer {
         });
         c.stroke();
       }
+      if (this.editHandles) {
+        c.fillStyle = '#d4f477';
+        for (const stroke of this.previewStrokes) {
+          const step = Math.max(1, Math.ceil(stroke.length / 100));
+          for (let i = 0; i < stroke.length; i += step) {
+            const [x, y] = this.viewport.worldToScreen(stroke[i]);
+            c.fillRect(x - 2, y - 2, 4, 4);
+          }
+        }
+      }
       return;
+    }
+    let ink: string | CanvasGradient = p.appearance.color;
+    if (p.appearance.colorMode === 'spectrum') {
+      const gradient = c.createLinearGradient(
+        this.inkBounds[0],
+        this.inkBounds[1],
+        this.inkBounds[2],
+        this.inkBounds[3],
+      );
+      for (let i = 0; i <= 6; i++)
+        gradient.addColorStop(i / 6, `hsl(${phase * 360 + i * 60} 95% 65%)`);
+      ink = gradient;
+      if (p.appearance.reconstruction && this.store.reconstruction)
+        this.path(c, this.store.reconstruction, ink, p.appearance.width);
     }
     if (p.appearance.trace && this.store.reconstruction)
       this.path(
         c,
         this.store.reconstruction,
-        p.appearance.color,
+        ink,
         p.appearance.width + 1,
         Math.floor(phase * this.store.reconstruction.count) + 1,
         false,
@@ -162,15 +216,19 @@ export class CanvasRenderer {
               0,
               Math.PI * 2,
             );
-            c.strokeStyle = '#686868';
-            c.lineWidth = 1;
+            c.strokeStyle =
+              p.appearance.colorMode === 'spectrum'
+                ? `hsl(${phase * 120 + i * 17} 65% 64%)`
+                : this.orbitColor;
+            c.lineWidth = this.orbitWidth;
             c.stroke();
           }
           if (p.appearance.vectors) {
             c.beginPath();
             c.moveTo(...start);
             c.lineTo(...stop);
-            c.strokeStyle = '#b7b7b7';
+            c.strokeStyle = this.vectorColor;
+            c.lineWidth = this.orbitWidth;
             c.stroke();
           }
         }
@@ -183,7 +241,8 @@ export class CanvasRenderer {
     const tip = this.viewport.worldToScreen(end);
     c.beginPath();
     c.arc(...tip, 4, 0, Math.PI * 2);
-    c.fillStyle = p.appearance.color;
+    c.fillStyle =
+      p.appearance.colorMode === 'spectrum' ? `hsl(${phase * 360} 95% 65%)` : p.appearance.color;
     c.fill();
   }
 

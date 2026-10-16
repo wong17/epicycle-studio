@@ -154,6 +154,12 @@ test('flatAnimationVideoCanCancelAndExportsMovingFramesWithoutChangingPhase', as
     ).toBeVisible();
     return;
   }
+  await page.getByText('Opciones de video', { exact: true }).click();
+  await page.getByRole('button', { name: 'Negro', exact: true }).click();
+  await page.getByRole('checkbox', { name: 'Incluir cuadrícula', exact: true }).check();
+  await page.getByRole('button', { name: 'Vertical 9:16', exact: true }).click();
+  await page.getByRole('slider', { name: 'Zoom de exportación' }).fill('1.25');
+  await page.getByRole('slider', { name: 'Zoom de exportación' }).dispatchEvent('change');
   await record.click();
   await page.getByRole('button', { name: 'Cancelar grabación', exact: true }).click();
   await expect(record).toBeEnabled();
@@ -194,7 +200,11 @@ test('flatAnimationVideoCanCancelAndExportsMovingFramesWithoutChangingPhase', as
             ),
           );
         }
-        return { width: video.videoWidth, height: video.videoHeight, hashes };
+        canvas.width = video.videoWidth;
+        canvas.height = video.videoHeight;
+        context.drawImage(video, 0, 0);
+        const background = Array.from(context.getImageData(10, 10, 1, 1).data).slice(0, 3);
+        return { width: video.videoWidth, height: video.videoHeight, hashes, background };
       } finally {
         video.pause();
         video.removeAttribute('src');
@@ -207,8 +217,9 @@ test('flatAnimationVideoCanCancelAndExportsMovingFramesWithoutChangingPhase', as
       mime: file.suggestedFilename().endsWith('.mp4') ? 'video/mp4' : 'video/webm',
     },
   );
-  expect(frames.width).toBe(1280);
-  expect(frames.height).toBe(720);
+  expect(frames.width).toBe(720);
+  expect(frames.height).toBe(1280);
+  expect(frames.background.every((channel) => channel < 8)).toBe(true);
   expect(frames.hashes[0]).not.toBe(frames.hashes[1]);
   await expect(slider).toHaveValue(phase);
   await expect(page.getByRole('button', { name: 'Reproducir', exact: true })).toBeVisible();

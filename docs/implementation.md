@@ -150,3 +150,15 @@ Verificación final: 42 unitarios aprobados y 13 comprobaciones de navegador apr
 El borrador 2D acumula varios trazos sin reutilizar la geometría anterior. Reproducir analiza el borrador antes de iniciar el reloj; por defecto recorre el camino de vuelta para cerrar el ciclo. La animación conecta los trazos por orden: no hay separación matemática de movimientos con lápiz levantado. La goma vacía el borrador; cancelar recupera el documento anterior. Guardar o cambiar de dimensión confirma un borrador válido sin reproducirlo; un borrador vacío se descarta. Exportar queda deshabilitado hasta terminar el dibujo.
 
 La selección de ejemplos se deriva de la geometría, independientemente del nombre y de los identificadores de círculos manuales. Esto conserva el estado al importar y deshacer, y evita marcar un ejemplo cuando el usuario modifica sus puntos.
+
+## Capturas y exportación
+
+El panel separa imágenes, proyecto y video, con opciones plegables y vista previa. PNG y video comparten el mismo generador de escenas aisladas: fondo gris oscuro por defecto, negro opcional, cuadrícula independiente, zoom entre 0.25× y 3× y formato horizontal, cuadrado o vertical. PNG y SVG admiten transparencia; SVG conserva solo la curva vectorial, fondo y cuadrícula. La imagen ofrece resolución 1× o 2×. El encuadre se puede ajustar al dibujo o copiar de la cámara del editor. Las opciones de imagen y video son independientes y no modifican el documento ni el reloj del editor.
+
+## Precisión, edición y color del trazo
+
+La selección de términos se agrupa en intervalos de 80 ms y usa un estado de cálculo local: no cambia la opacidad de Guardar/Reproducir ni interrumpe el reloj. Durante un análisis de fuente, solo ese slider queda bloqueado para no cancelar el análisis pendiente.
+
+Los dibujos libres usan 2048 muestras y reciben una cantidad de términos según el espectro: error RMS normalizado menor o igual a 0.0015 y suma de radios omitidos menor o igual a 0.02. El usuario conserva el ajuste manual y puede volver a la recomendación. La cuenta depende de la geometría, no de un 64 fijo ni del número bruto de eventos del ratón.
+
+Editar trazo permite deformar suavemente puntos cercanos y añadir trazos con el lápiz. Los índices de inicio de cada trazo se conservan opcionalmente en V2; V1 omite esa información y el modo de color. El modo RGB colorea la reconstrucción y las órbitas según la fase; PNG/video capturan ese color, SVG conserva el color base. La exportación usa líneas más contrastadas, grosor ajustable y Line2/LineSegments2 en 3D. Los estilos de base y las adaptaciones del estudio se separan en dos archivos manteniendo su cascada y los presupuestos originales.

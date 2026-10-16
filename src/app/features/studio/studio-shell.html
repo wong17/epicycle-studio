@@ -94,7 +94,7 @@
       <button
         #exportTrigger
         [disabled]="drawing()"
-        (click)="exportOpen.set(!exportOpen())"
+        (click)="toggleExport()"
         [attr.aria-expanded]="exportOpen()"
         aria-controls="export-popover"
         aria-label="Exportar y compartir"
@@ -145,38 +145,198 @@
     [hidden]="!exportOpen()"
     aria-label="Exportar y compartir"
   >
-    @if (dimension === 3) {
-      <details>
-        <summary>Calidad de la escultura</summary>
-        <label
-          >Radio del tubo normalizado<input
-            type="number"
-            min="0.002"
-            max="0.1"
-            step="0.002"
-            [value]="project.appearance.tubeRadius"
-            (change)="store.edit(patchRadius(+$any($event.target).value), false)" /></label
-        ><studio-options
-          label="Tolerancia de línea central"
-          [options]="[
-            { value: '0.005', label: '0.5 % del tamaño', icon: 'precision', badge: '0.5%' },
-            { value: '0.01', label: '1 % del tamaño', icon: 'precision', badge: '1%' },
-            { value: '0.02', label: '2 % del tamaño', icon: 'precision', badge: '2%' },
-          ]"
-          [value]="project.appearance.tolerance ?? 0.005"
-          (valueChange)="store.edit(patchTolerance(+$event), false)"
-        />
-      </details>
-    }
+    <h2>Exportar creación</h2>
+    <div class="capture-tabs" role="group" aria-label="Vista previa de exportación">
+      <button
+        class="icon-button"
+        [class.selected]="captureMode === 'image'"
+        [attr.aria-pressed]="captureMode === 'image'"
+        (click)="configureCapture('image')"
+        title="Previsualizar imagen"
+        aria-label="Previsualizar imagen"
+      >
+        <studio-icon name="image" />
+      </button>
+      <button
+        class="icon-button"
+        [class.selected]="captureMode === 'video'"
+        [attr.aria-pressed]="captureMode === 'video'"
+        (click)="configureCapture('video')"
+        title="Previsualizar video"
+        aria-label="Previsualizar video"
+      >
+        <studio-icon name="video" />
+      </button>
+      <span>{{ captureMode === 'image' ? 'Imagen' : 'Video' }} · {{ captureDimensions }} px</span>
+      <button
+        class="icon-button"
+        (click)="refreshCapture()"
+        title="Actualizar vista previa"
+        aria-label="Actualizar vista previa"
+      >
+        <studio-icon name="rotate" />
+      </button>
+    </div>
+    <canvas
+      #capturePreview
+      class="capture-preview"
+      [attr.aria-busy]="captureBusy()"
+      aria-label="Vista previa del encuadre de exportación"
+    ></canvas>
+    <p class="helper">Así quedará el encuadre. Los ajustes no cambian el editor.</p>
+    <h3>Imagen</h3>
+    <div class="export-grid image-actions">
+      <button
+        class="icon-button"
+        (click)="png()"
+        [disabled]="store.busy() || recording()"
+        title="Imagen PNG"
+        data-tooltip="Imagen PNG"
+        aria-label="Imagen PNG"
+      >
+        <studio-icon name="image" />
+      </button>
+      @if (dimension === 2) {
+        <button
+          class="icon-button"
+          (click)="exportSvg()"
+          [disabled]="store.busy() || recording()"
+          title="Vector SVG"
+          data-tooltip="Vector SVG"
+          aria-label="Vector SVG"
+        >
+          <studio-icon name="vector" />
+        </button>
+      }
+    </div>
+    <details (toggle)="$any($event.target).open && configureCapture('image')">
+      <summary>Opciones de imagen PNG / SVG</summary>
+      <studio-capture-options
+        [settings]="imageCapture"
+        (settingsChange)="configureCapture('image', $event)"
+      />
+      <studio-options
+        label="Resolución"
+        [options]="[
+          { value: '1', label: '1×', icon: 'image', badge: '1×' },
+          { value: '2', label: '2× · máximo 4096 px', icon: 'image', badge: '2×' },
+        ]"
+        [value]="pngScale"
+        (valueChange)="pngScale = +$event; configureCapture('image')"
+      />
+      <p class="helper">
+        PNG captura las capas visibles. SVG conserva la curva, el color base, el fondo y la
+        cuadrícula. PNG y video incluyen RGB.
+      </p>
+    </details>
+    <h3>Proyecto y enlaces</h3>
+    <div class="export-grid project-actions">
+      <button
+        class="icon-button"
+        (click)="exportJson()"
+        [disabled]="store.busy() || recording()"
+        title="Proyecto JSON"
+        data-tooltip="Proyecto JSON"
+        aria-label="Proyecto JSON"
+      >
+        <studio-icon name="code" /></button
+      ><button
+        class="icon-button"
+        (click)="copyLink()"
+        [disabled]="store.busy() || recording()"
+        title="Copiar enlace"
+        data-tooltip="Copiar enlace"
+        aria-label="Copiar enlace"
+      >
+        <studio-icon name="link" />
+      </button>
+      @if (dimension === 3) {
+        <button
+          class="icon-button"
+          (click)="glb()"
+          [disabled]="store.busy() || recording()"
+          title="Escultura GLB"
+          data-tooltip="Escultura GLB"
+          aria-label="Escultura GLB"
+        >
+          <studio-icon name="cube" />
+        </button>
+      }
+    </div>
+    <details>
+      <summary>Más opciones del proyecto</summary>
+      @if (dimension === 3) {
+        <details>
+          <summary>Calidad de la escultura</summary>
+          <label
+            >Radio del tubo normalizado<input
+              type="number"
+              min="0.002"
+              max="0.1"
+              step="0.002"
+              [value]="project.appearance.tubeRadius"
+              (change)="store.edit(patchRadius(+$any($event.target).value), false)" /></label
+          ><studio-options
+            label="Tolerancia de línea central"
+            [options]="[
+              { value: '0.005', label: '0.5 % del tamaño', icon: 'precision', badge: '0.5%' },
+              { value: '0.01', label: '1 % del tamaño', icon: 'precision', badge: '1%' },
+              { value: '0.02', label: '2 % del tamaño', icon: 'precision', badge: '2%' },
+            ]"
+            [value]="project.appearance.tolerance ?? 0.005"
+            (valueChange)="store.edit(patchTolerance(+$event), false)"
+          />
+        </details>
+      }
+      @if (dimension === 3) {
+        <button
+          class="full icon-button"
+          [disabled]="store.busy()"
+          (click)="saveProjection()"
+          title="Guardar proyección como proyecto 2D →"
+          data-tooltip="Guardar proyección como proyecto 2D →"
+          aria-label="Guardar proyección como proyecto 2D →"
+        >
+          <studio-icon name="plane" /><span class="sr-only">
+            Guardar proyección como proyecto 2D →
+          </span>
+        </button>
+      }
+      @if (dimension === 2) {
+        <button
+          class="full lift icon-button"
+          (click)="lift()"
+          title="Llevar una copia a 3D →"
+          data-tooltip="Llevar una copia a 3D →"
+          aria-label="Llevar una copia a 3D →"
+        >
+          <studio-icon name="cube" /><span class="sr-only">Llevar una copia a 3D →</span>
+        </button>
+        <details>
+          <summary>Compatibilidad del proyecto</summary>
+          <button
+            class="full icon-button"
+            (click)="exportV1()"
+            title="Descargar JSON V1 · sólo 2D"
+            data-tooltip="Descargar JSON V1 · sólo 2D"
+            aria-label="Descargar JSON V1 · sólo 2D"
+          >
+            <studio-icon name="code" /><span class="sr-only">Descargar JSON V1 · sólo 2D</span>
+          </button>
+        </details>
+      }
+    </details>
+    <h3>Animación</h3>
     @if (recording()) {
       <button
-        class="full icon-button"
+        class="icon-button"
         (click)="cancelVideo()"
+        [disabled]="false"
         title="Cancelar grabación"
         data-tooltip="Cancelar grabación"
         aria-label="Cancelar grabación"
       >
-        <studio-icon name="stop" /><span class="sr-only">Cancelar grabación</span>
+        <studio-icon name="stop" />
       </button>
     } @else {
       <button
@@ -187,121 +347,27 @@
         [attr.data-tooltip]="'Grabar un ciclo · ' + 8 / project.playback.speed + ' s'"
         [attr.aria-label]="'Grabar un ciclo · ' + 8 / project.playback.speed + ' s'"
       >
-        <studio-icon name="video" /><span class="sr-only">Grabar animación completa</span>
+        <studio-icon name="video" /><span class="video-label">Exportar video</span>
       </button>
     }
+    <details (toggle)="$any($event.target).open && configureCapture('video')">
+      <summary>Opciones de video</summary>
+      <studio-capture-options
+        [settings]="videoCapture"
+        [video]="true"
+        (settingsChange)="configureCapture('video', $event)"
+      />
+    </details>
     <p class="helper">
       {{
         videoAvailable
-          ? 'Un ciclo completo en video · 1280 × 720. Mantén la pestaña visible.'
+          ? 'Un ciclo completo · ' +
+            8 / project.playback.speed +
+            ' s. Mantén la pestaña visible durante la grabación.'
           : 'Este navegador no admite grabación. Puedes exportar PNG o JSON.'
       }}
     </p>
-    <h2>Llévate tu creación <span>↗</span></h2>
-    <details>
-      <summary>Opciones de imagen PNG</summary>
-      <studio-options
-        label="Resolución"
-        [options]="[
-          { value: '1', label: '1×', icon: 'image', badge: '1×' },
-          { value: '2', label: '2× · máximo 4096 px', icon: 'image', badge: '2×' },
-        ]"
-        [value]="pngScale"
-        (valueChange)="pngScale = +$event"
-      /><label><input type="checkbox" [(ngModel)]="pngTransparent" />Fondo transparente</label>
-    </details>
-    <div class="export-grid">
-      <button
-        [disabled]="store.busy()"
-        (click)="png()"
-        class="icon-button"
-        title="Imagen PNG"
-        data-tooltip="Imagen PNG"
-        aria-label="Imagen PNG"
-      >
-        <studio-icon name="image" /><span class="sr-only">Imagen PNG</span>
-      </button>
-      @if (dimension === 2) {
-        <button
-          [disabled]="store.busy()"
-          (click)="exportSvg()"
-          class="icon-button"
-          title="Vector SVG"
-          data-tooltip="Vector SVG"
-          aria-label="Vector SVG"
-        >
-          <studio-icon name="vector" /><span class="sr-only">Vector SVG</span>
-        </button>
-      } @else {
-        <button
-          [disabled]="store.busy()"
-          (click)="glb()"
-          class="icon-button"
-          title="Escultura GLB"
-          data-tooltip="Escultura GLB"
-          aria-label="Escultura GLB"
-        >
-          <studio-icon name="cube" /><span class="sr-only">Escultura GLB</span>
-        </button>
-      }
-      <button
-        (click)="exportJson()"
-        class="icon-button"
-        title="Proyecto JSON"
-        data-tooltip="Proyecto JSON"
-        aria-label="Proyecto JSON"
-      >
-        <studio-icon name="code" /><span class="sr-only">Proyecto JSON</span></button
-      ><button
-        (click)="copyLink()"
-        class="icon-button"
-        title="Copiar enlace"
-        data-tooltip="Copiar enlace"
-        aria-label="Copiar enlace"
-      >
-        <studio-icon name="link" /><span class="sr-only">Copiar enlace</span>
-      </button>
-    </div>
-    @if (dimension === 3) {
-      <button
-        class="full icon-button"
-        [disabled]="store.busy()"
-        (click)="saveProjection()"
-        title="Guardar proyección como proyecto 2D →"
-        data-tooltip="Guardar proyección como proyecto 2D →"
-        aria-label="Guardar proyección como proyecto 2D →"
-      >
-        <studio-icon name="plane" /><span class="sr-only">
-          Guardar proyección como proyecto 2D →
-        </span>
-      </button>
-    }
-    @if (dimension === 2) {
-      <button
-        class="full lift icon-button"
-        (click)="lift()"
-        title="Llevar una copia a 3D →"
-        data-tooltip="Llevar una copia a 3D →"
-        aria-label="Llevar una copia a 3D →"
-      >
-        <studio-icon name="cube" /><span class="sr-only">Llevar una copia a 3D →</span>
-      </button>
-      <details>
-        <summary>Compatibilidad del proyecto</summary>
-        <button
-          class="full icon-button"
-          (click)="exportV1()"
-          title="Descargar JSON V1 · sólo 2D"
-          data-tooltip="Descargar JSON V1 · sólo 2D"
-          aria-label="Descargar JSON V1 · sólo 2D"
-        >
-          <studio-icon name="code" /><span class="sr-only">Descargar JSON V1 · sólo 2D</span>
-        </button>
-      </details>
-    }
-    <p class="helper">
-      Tus dibujos viven en este navegador. Descarga JSON para conservar una copia editable.
-    </p>
+    <p class="helper">Descarga JSON para conservar una copia editable de tu proyecto.</p>
   </section>
   <main class="workspace">
     <section class="drawing-region" aria-label="Área de creación">
@@ -337,6 +403,18 @@
               aria-label="✎ Dibujar"
             >
               <studio-icon name="edit" /><span class="sr-only"> ✎ <span>Dibujar</span></span>
+            </button>
+            <button
+              class="icon-button"
+              (click)="editDrawing()"
+              [disabled]="
+                store.busy() || (drawing() ? !pending() : project.source.kind !== 'curve2d')
+              "
+              title="Editar trazo"
+              data-tooltip="Editar trazo"
+              aria-label="Editar trazo"
+            >
+              <studio-icon name="points" />
             </button>
             <button
               (click)="clearDrawing()"
@@ -491,7 +569,13 @@
             <strong
               >Dibujo libre · {{ strokeCount() }} trazo{{ strokeCount() === 1 ? '' : 's' }}</strong
             >
-            <p>Puedes levantar el lápiz y seguir. Al reproducir, los trazos se unen por orden.</p>
+            <p>
+              {{
+                tool() === 'edit'
+                  ? 'Arrastra una zona del trazo para ajustarla. Pulsa el lápiz para añadir trazos, o reproduce para aplicar.'
+                  : 'Puedes levantar el lápiz y seguir. Al reproducir, los trazos se unen por orden.'
+              }}
+            </p>
             <div>
               <button
                 class="primary icon-button"
@@ -703,6 +787,8 @@
               }}<strong>{{ project.analysis.count }}</strong></label
             ><input
               id="components"
+              [disabled]="store.busy()"
+              [attr.aria-busy]="store.selecting()"
               (pointerdown)="store.beginEditGroup()"
               (pointerup)="store.endEditGroup()"
               (pointercancel)="store.endEditGroup()"
@@ -716,6 +802,19 @@
               [value]="project.analysis.count"
               (input)="store.setCount(+$any($event.target).value)"
             />
+            @if (dimension === 2) {
+              <button
+                class="full quiet"
+                (click)="
+                  store.edit(patchOrder('amplitude'), false);
+                  store.setCount(store.recommendedCount())
+                "
+                [disabled]="store.busy()"
+                title="Cantidad calculada para conservar el detalle"
+              >
+                Usar recomendados · {{ store.recommendedCount() }}
+              </button>
+            }
             <div class="range-caption"><span>Esencial</span><span>Todos los detalles</span></div>
             <div class="stats">
               <div>
@@ -1081,6 +1180,15 @@
               >
             }
           </div>
+          <studio-options
+            label="Color del trazo"
+            [options]="[
+              { value: 'solid', label: 'Color fijo', icon: 'curve' },
+              { value: 'spectrum', label: 'RGB animado', icon: 'spectrum' },
+            ]"
+            [value]="project.appearance.colorMode ?? 'solid'"
+            (valueChange)="setColorMode($event)"
+          />
           <div class="appearance-row">
             <studio-options
               label="Color"

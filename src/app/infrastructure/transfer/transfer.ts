@@ -9,7 +9,17 @@ export function download(blob: Blob, name: string): void {
   a.click();
   setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
-export function exportSvg(s: CurveSamples, color: string, width: number): string {
+export function exportSvg(
+  s: CurveSamples,
+  color: string,
+  width: number,
+  options: {
+    background?: 'dark' | 'black' | 'transparent';
+    grid?: boolean;
+    bounds?: [number, number, number, number];
+    pixels?: number;
+  } = {},
+): string {
   if (
     s.dimension !== 2 ||
     !['#d4f477', '#ffa68b', '#89dce6'].includes(color) ||
@@ -29,7 +39,28 @@ export function exportSvg(s: CurveSamples, color: string, width: number): string
     h = Math.max(...ys) - minY,
     pad = Math.max(w, h) * 0.04 || 0.04,
     stroke = (width * Math.max(w, h)) / 800;
-  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="${minX - pad} ${minY - pad} ${w + 2 * pad} ${h + 2 * pad}"><title>Epicycle Studio · reconstrucción muestreada</title><path d="${xs.map((x, i) => `${i ? 'L' : 'M'}${x},${ys[i]}`).join(' ')} Z" fill="none" stroke="${color}" stroke-width="${stroke}" stroke-linejoin="round"/></svg>`;
+  const frame = options.bounds ?? [minX - pad, minY - pad, w + 2 * pad, h + 2 * pad];
+  const background = options.background === 'black' ? '#000000' : '#151515';
+  const backdrop =
+    options.background === 'transparent'
+      ? ''
+      : `<rect x="${frame[0]}" y="${frame[1]}" width="${frame[2]}" height="${frame[3]}" fill="${background}"/>`;
+  const step = (frame[2] * 32) / (options.pixels ?? 800);
+  const grid = options.grid
+    ? `<g stroke="#252525" stroke-width="${step / 32}">${[
+        ...Array.from(
+          { length: Math.ceil(frame[2] / step) + 1 },
+          (_, i) =>
+            `<line x1="${frame[0] + i * step}" y1="${frame[1]}" x2="${frame[0] + i * step}" y2="${frame[1] + frame[3]}"/>`,
+        ),
+        ...Array.from(
+          { length: Math.ceil(frame[3] / step) + 1 },
+          (_, i) =>
+            `<line x1="${frame[0]}" y1="${frame[1] + i * step}" x2="${frame[0] + frame[2]}" y2="${frame[1] + i * step}"/>`,
+        ),
+      ].join('')}</g>`
+    : '';
+  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="${frame.join(' ')}"><title>Epicycle Studio · reconstrucción muestreada</title>${backdrop}${grid}<path d="${xs.map((x, i) => `${i ? 'L' : 'M'}${x},${ys[i]}`).join(' ')} Z" fill="none" stroke="${color}" stroke-width="${options.bounds ? (width * frame[2]) / (options.pixels ?? 800) : stroke}" stroke-linejoin="round"/></svg>`;
 }
 const shareSchema = z.strictObject({
   shareVersion: z.literal(1),

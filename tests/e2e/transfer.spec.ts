@@ -21,6 +21,8 @@ test('exportedSvgImportsAndKeepsSourceOrientation', async ({ page }) => {
     )
   )
     await page.getByRole('button', { name: 'Exportar y compartir', exact: true }).click();
+  await page.getByText('Opciones de imagen PNG / SVG', { exact: true }).click();
+  await page.getByRole('checkbox', { name: 'Incluir cuadrícula', exact: true }).check();
   await page.getByRole('button', { name: 'Vector SVG', exact: true }).click();
   const file = await pending;
   await page.locator('input[type=file]').setInputFiles({
@@ -84,6 +86,7 @@ test('shareLinkPreviewAndV1RoundTrip', async ({ page, browser }) => {
   await expect(other.getByRole('button', { name: 'Reproducir', exact: true })).toBeVisible();
   expect(new URL(other.url()).hash).toBe('');
   await other.close();
+  await page.getByText('Más opciones del proyecto', { exact: true }).click();
   await page.getByText('Compatibilidad del proyecto', { exact: true }).click();
   const pending = page.waitForEvent('download');
   await page.getByRole('button', { name: 'Descargar JSON V1 · sólo 2D' }).click();
@@ -106,6 +109,7 @@ test('projectionCreatesCopyAndPreservesSpatialSource', async ({ page }) => {
   await expect(page.locator('canvas[data-ready]')).toHaveAttribute('data-ready', 'true');
   await page.getByRole('button', { name: 'Componer', exact: true }).click();
   await page.getByRole('button', { name: 'Exportar y compartir', exact: true }).click();
+  await page.getByText('Más opciones del proyecto', { exact: true }).click();
   await page.getByRole('button', { name: 'Guardar proyección como proyecto 2D →' }).click();
   await page.getByRole('button', { name: 'Abrir como copia', exact: true }).click();
   await expect(page).toHaveURL(/studio\/2d/);
@@ -146,12 +150,15 @@ test('savedViewAndTransparentPngOptions', async ({ page }) => {
     )
   )
     await page.getByRole('button', { name: 'Exportar y compartir', exact: true }).click();
-  await page.getByText('Opciones de imagen PNG', { exact: true }).click();
+  await page.getByText('Opciones de imagen PNG / SVG', { exact: true }).click();
   await page
     .getByRole('group', { name: 'Resolución', exact: true })
     .getByRole('button', { name: '2× · máximo 4096 px', exact: true })
     .click();
-  await page.getByLabel('Fondo transparente', { exact: true }).check();
+  await page
+    .getByRole('group', { name: 'Fondo de exportación', exact: true })
+    .getByRole('button', { name: 'Transparente', exact: true })
+    .click();
   const pending = page.waitForEvent('download');
   await page.getByRole('button', { name: 'Imagen PNG', exact: true }).click();
   const bytes = await readFile((await (await pending).path())!);

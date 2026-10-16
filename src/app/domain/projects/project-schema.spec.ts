@@ -1,5 +1,5 @@
 import { it, expect } from 'vitest';
-import { createProject, parseProject, migrateProject } from './project-schema';
+import { createProject, parseProject, migrateProject, exportProjectV1 } from './project-schema';
 import {
   encodeShare,
   decodeShare,
@@ -76,4 +76,32 @@ it('rejectsUnsafeSvgWithoutExecutingMarkup', () => {
   ])
     expect(() => inspectSvg(`<svg viewBox="0 0 10 10">${body}</svg>`)).toThrow();
   expect(inspectSvg('<svg viewBox="0 0 10 10"><path d="M0 0L1 1Z"/></svg>')).toHaveLength(1);
+});
+
+it('roundTripsEditableStrokeBoundariesAndRgbWithoutChangingLegacyExports', () => {
+  const p = createProject(2, {
+    kind: 'curve2d',
+    closure: 'return',
+    points: [
+      [0, 0],
+      [1, 0],
+      [1, 1],
+      [0, 1],
+      [-1, 1],
+      [-1, 0],
+    ],
+    strokeStarts: [0, 3],
+  });
+  p.appearance.colorMode = 'spectrum';
+  const restored = parseProject(JSON.stringify(p));
+  expect(restored.source).toEqual(p.source);
+  expect(restored.appearance.colorMode).toBe('spectrum');
+  const legacy = migrateProject(exportProjectV1(p));
+  expect(legacy.appearance.colorMode).toBeUndefined();
+  expect(legacy.source).not.toHaveProperty('strokeStarts');
+  for (const starts of [[1], [0, 0], [0, 100]]) {
+    expect(() =>
+      parseProject(JSON.stringify({ ...p, source: { ...p.source, strokeStarts: starts } })),
+    ).toThrow();
+  }
 });

@@ -1,3 +1,5 @@
+import { CaptureOptions } from './capture-options';
+import { CaptureSettings, captureSize, createCaptureScene, defaultCapture } from './capture-scene';
 import { OptionStrip } from './option-strip';
 import { StudioIcon } from './studio-icon';
 import { MathPanel } from './math-panel';
@@ -38,9 +40,17 @@ import {
 @Component({
   selector: 'app-studio-shell',
   host: { '(document:keydown.escape)': 'closeExport()' },
-  imports: [FormsModule, DecimalPipe, RouterLink, StudioIcon, MathPanel, OptionStrip],
+  imports: [
+    FormsModule,
+    DecimalPipe,
+    RouterLink,
+    StudioIcon,
+    MathPanel,
+    OptionStrip,
+    CaptureOptions,
+  ],
   templateUrl: './studio-shell.html',
-  styleUrl: './studio-shell.scss',
+  styleUrls: ['./studio-shell.scss', './studio-responsive.scss'],
 })
 export class StudioShell implements AfterViewInit, OnDestroy {
   readonly store = inject(StudioStore);
@@ -84,7 +94,7 @@ export class StudioShell implements AfterViewInit, OnDestroy {
   }
   @ViewChild('file', { static: true }) file!: ElementRef<HTMLInputElement>;
   readonly dimension = this.route.snapshot.data['dimension'] as 2 | 3;
-  readonly tool = signal<'explore' | 'draw' | 'points' | 'pan'>('explore');
+  readonly tool = signal<'explore' | 'draw' | 'edit' | 'points' | 'pan'>('explore');
   readonly ready = signal(false);
   readonly modal = signal('');
   readonly preview = signal<Project | null>(null);
@@ -93,11 +103,67 @@ export class StudioShell implements AfterViewInit, OnDestroy {
   readonly strokeCount = signal(0);
   private strokes: Vec2[][] = [];
   private drawingGeneration = 0;
+  private drawingClosure: 'return' | 'segment' = 'return';
+  private editDrag: { start: Vec2; original: Vec2[][]; stroke: number; point: number } | null =
+    null;
   readonly share = signal('');
   readonly svgPaths = signal<{ name: string; d: string }[]>([]);
   depth = 0;
   pngScale = 1;
-  pngTransparent = false;
+  imageCapture = defaultCapture();
+  videoCapture = defaultCapture();
+  captureMode: 'image' | 'video' = 'image';
+  readonly captureBusy = signal(false);
+  private captureGeneration = 0;
+  @ViewChild('capturePreview', { static: true }) capturePreview!: ElementRef<HTMLCanvasElement>;
+  get captureSettings(): CaptureSettings {
+    return this.captureMode === 'image' ? this.imageCapture : this.videoCapture;
+  }
+  get captureDimensions(): string {
+    const [w, h] = captureSize(this.captureSettings);
+    const scale = this.captureMode === 'image' ? this.pngScale : 1;
+    return `${w * scale} × ${h * scale}`;
+  }
+  toggleExport(): void {
+    this.exportOpen.set(!this.exportOpen());
+    if (this.exportOpen()) void this.refreshCapture();
+  }
+  configureCapture(kind: 'image' | 'video', settings?: CaptureSettings): void {
+    this.captureMode = kind;
+    if (settings) {
+      if (kind === 'image') this.imageCapture = settings;
+      else this.videoCapture = settings;
+    }
+    void this.refreshCapture();
+  }
+  async refreshCapture(): Promise<void> {
+    const generation = ++this.captureGeneration;
+    this.captureBusy.set(true);
+    let scene: Awaited<ReturnType<typeof createCaptureScene>> | null = null;
+    try {
+      scene = await createCaptureScene(
+        this.store,
+        this.flat,
+        this.contextLost() ? null : this.spatial,
+        {
+          ...this.captureSettings,
+        },
+      );
+      if (generation !== this.captureGeneration || !this.exportOpen() || this.destroyed) return;
+      scene.render(this.store.clock.phase);
+      const preview = this.capturePreview.nativeElement;
+      preview.width = 640;
+      preview.height = Math.round((640 * scene.canvas.height) / scene.canvas.width);
+      const ctx = preview.getContext('2d')!;
+      ctx.clearRect(0, 0, preview.width, preview.height);
+      ctx.drawImage(scene.canvas, 0, 0, preview.width, preview.height);
+    } catch (error) {
+      if (generation === this.captureGeneration) this.error(error);
+    } finally {
+      scene?.dispose();
+      if (generation === this.captureGeneration) this.captureBusy.set(false);
+    }
+  }
   svgClosure: 'segment' | 'return' = 'segment';
   liftAmplitude = 0.25;
   liftFrequency = 3;
@@ -375,9 +441,10 @@ export class StudioShell implements AfterViewInit, OnDestroy {
     this.spatial?.setCamera(value);
     this.flat?.fit();
   }
-  chooseTool(value: 'explore' | 'draw' | 'points' | 'pan'): void {
+  chooseTool(value: 'explore' | 'draw' | 'edit' | 'points' | 'pan'): void {
     if (value === 'draw' && !this.drawing()) this.clearDrawing();
     this.tool.set(value);
+    if (this.flat) this.flat.editHandles = value === 'edit';
     if (value === 'draw' || value === 'points') this.store.pause();
     if (this.spatial) {
       this.spatial.edit = value === 'points';
@@ -392,9 +459,31 @@ export class StudioShell implements AfterViewInit, OnDestroy {
       this.dimension !== 2 ||
       this.store.busy() ||
       this.pointer !== null ||
-      !(this.tool() === 'draw' || this.tool() === 'pan')
+      !(this.tool() === 'draw' || this.tool() === 'pan' || this.tool() === 'edit')
     )
       return;
+    if (this.tool() === 'edit') {
+      const rect = this.canvas.nativeElement.getBoundingClientRect();
+      const screen: Vec2 = [event.clientX - rect.left, event.clientY - rect.top];
+      let nearest = 16,
+        target: { stroke: number; point: number } | null = null;
+      this.strokes.forEach((stroke, si) =>
+        stroke.forEach((point, pi) => {
+          const xy = this.flat!.viewport.worldToScreen(point);
+          const distance = Math.hypot(xy[0] - screen[0], xy[1] - screen[1]);
+          if (distance < nearest) {
+            nearest = distance;
+            target = { stroke: si, point: pi };
+          }
+        }),
+      );
+      if (!target) return;
+      this.editDrag = {
+        start: this.flat.viewport.screenToWorld(screen),
+        original: structuredClone(this.strokes),
+        ...(target as { stroke: number; point: number }),
+      };
+    }
     this.pointer = event.pointerId;
     this.points = [];
     this.canvas.nativeElement.setPointerCapture(event.pointerId);
@@ -402,7 +491,22 @@ export class StudioShell implements AfterViewInit, OnDestroy {
   }
   pointerMove(event: PointerEvent): void {
     if (this.pointer !== event.pointerId) return;
-    if (this.tool() === 'pan' && this.flat) {
+    if (this.tool() === 'edit' && this.flat && this.editDrag) {
+      const rect = this.canvas.nativeElement.getBoundingClientRect();
+      const next = this.flat.viewport.screenToWorld([
+        event.clientX - rect.left,
+        event.clientY - rect.top,
+      ]);
+      const drag = this.editDrag;
+      this.strokes[drag.stroke] = drag.original[drag.stroke].map((p, index) => {
+        const weight = Math.exp(-Math.pow((index - drag.point) / 8, 2));
+        return [
+          p[0] + (next[0] - drag.start[0]) * weight,
+          p[1] + (next[1] - drag.start[1]) * weight,
+        ];
+      });
+      this.flat.previewStrokes = this.strokes;
+    } else if (this.tool() === 'pan' && this.flat) {
       const center = this.flat.viewport.center,
         scale = this.flat.viewport.scale * this.flat.viewport.zoom;
       this.flat.viewport.center = [
@@ -434,7 +538,10 @@ export class StudioShell implements AfterViewInit, OnDestroy {
     if (this.pointer !== event.pointerId) return;
     this.pointer = null;
     this.canvas.nativeElement.releasePointerCapture(event.pointerId);
-    if (this.tool() === 'draw') {
+    if (this.tool() === 'edit') {
+      this.editDrag = null;
+      this.updateDrawing();
+    } else if (this.tool() === 'draw') {
       if (this.points.length >= 3) this.strokes.push(this.points);
       else this.store.notice.set('Haz un trazo un poco más largo. Puedes seguir dibujando.');
       this.points = [];
@@ -447,6 +554,10 @@ export class StudioShell implements AfterViewInit, OnDestroy {
     if (this.flat) this.flat.previewStrokes = this.strokes;
   }
   interruptStroke(): void {
+    if (this.editDrag) {
+      this.strokes = this.editDrag.original;
+      this.editDrag = null;
+    }
     if (this.pointer !== null && this.canvas.nativeElement.hasPointerCapture(this.pointer))
       this.canvas.nativeElement.releasePointerCapture(this.pointer);
     this.pointer = null;
@@ -456,6 +567,7 @@ export class StudioShell implements AfterViewInit, OnDestroy {
   clearDrawing(): void {
     this.drawingGeneration++;
     this.interruptStroke();
+    this.drawingClosure = 'return';
     this.store.pause();
     this.exportOpen.set(false);
     this.strokes = [];
@@ -467,6 +579,7 @@ export class StudioShell implements AfterViewInit, OnDestroy {
     if (this.dimension === 2 && window.innerWidth <= 700) this.store.setInspectorOpen(false);
     if (this.flat) {
       this.flat.drawing = true;
+      this.flat.editHandles = false;
       this.flat.previewStrokes = [];
       this.flat.invalidate();
     }
@@ -480,17 +593,40 @@ export class StudioShell implements AfterViewInit, OnDestroy {
     this.drawing.set(false);
     if (this.flat) {
       this.flat.drawing = false;
+      this.flat.editHandles = false;
       this.flat.previewStrokes = [];
       this.flat.invalidate();
     }
     this.tool.set('explore');
   }
-  async finishDrawing(closure: 'segment' | 'return' = 'return'): Promise<boolean> {
+  editDrawing(): void {
+    if (this.drawing() && this.pending() && !this.store.busy()) {
+      this.interruptStroke();
+      this.tool.set('edit');
+      if (this.flat) this.flat.editHandles = true;
+      return;
+    }
+    const source = this.project.source;
+    if (source.kind !== 'curve2d' || this.store.busy()) return;
+    const points = structuredClone(source.points);
+    const starts = source.strokeStarts ?? [0];
+    this.clearDrawing();
+    this.drawingClosure = source.closure;
+    this.strokes = starts.map((start, i) => points.slice(start, starts[i + 1] ?? points.length));
+    this.updateDrawing();
+    this.tool.set('edit');
+    if (this.flat) this.flat.editHandles = true;
+  }
+  async finishDrawing(closure: 'segment' | 'return' = this.drawingClosure): Promise<boolean> {
     const points = this.pending();
     if (!points || this.store.busy() || this.pointer !== null) return false;
     const generation = this.drawingGeneration;
     const source = {
       kind: 'curve2d' as const,
+      strokeStarts: this.strokes.reduce<number[]>((starts, stroke, index) => {
+        starts.push(index ? starts[index - 1] + this.strokes[index - 1].length : 0);
+        return starts;
+      }, []),
       points: points.map((p) => [...p] as [number, number]),
       closure,
     };
@@ -504,8 +640,9 @@ export class StudioShell implements AfterViewInit, OnDestroy {
     this.store.edit((p) => {
       p.name = 'Dibujo libre';
       p.source = source;
+      p.analysis.sampleCount = typeof Worker === 'undefined' ? 256 : 2048;
     }, false);
-    await this.store.analyze();
+    await this.store.analyze(true);
     if (
       generation !== this.drawingGeneration ||
       JSON.stringify(this.project.source) !== JSON.stringify(source) ||
@@ -580,6 +717,11 @@ export class StudioShell implements AfterViewInit, OnDestroy {
     } catch (error) {
       this.error(error);
     }
+  }
+  setColorMode(value: string): void {
+    this.store.edit((p) => {
+      p.appearance.colorMode = value === 'spectrum' ? 'spectrum' : 'solid';
+    }, false);
   }
   setLayer(key: keyof Project['appearance'], value: boolean): void {
     this.store.edit((p) => {
@@ -670,43 +812,57 @@ export class StudioShell implements AfterViewInit, OnDestroy {
       `${this.project.name}-v1.json`,
     );
   }
-  exportSvg(): void {
+  async exportSvg(): Promise<void> {
+    let scene: Awaited<ReturnType<typeof createCaptureScene>> | null = null;
     try {
       const s = this.store.reconstruction;
-      if (s)
-        download(
-          new Blob([exportSvg(s, this.project.appearance.color, this.project.appearance.width)], {
-            type: 'image/svg+xml',
-          }),
-          `${this.project.name}.svg`,
-        );
+      if (!s || this.dimension !== 2) return;
+      scene = await createCaptureScene(this.store, this.flat, null, { ...this.imageCapture });
+      const renderer = scene.renderer as CanvasRenderer;
+      const [w, h] = captureSize(this.imageCapture);
+      const start = renderer.viewport.screenToWorld([0, 0]);
+      const end = renderer.viewport.screenToWorld([w, h]);
+      download(
+        new Blob(
+          [
+            exportSvg(
+              s,
+              this.project.appearance.color,
+              Math.min(6, this.project.appearance.width * this.imageCapture.lineWeight),
+              {
+                background: this.imageCapture.background,
+                grid: this.imageCapture.grid,
+                bounds: [start[0], -start[1], end[0] - start[0], start[1] - end[1]],
+                pixels: w,
+              },
+            ),
+          ],
+          { type: 'image/svg+xml' },
+        ),
+        `${this.project.name}.svg`,
+      );
     } catch (error) {
       this.error(error);
+    } finally {
+      scene?.dispose();
     }
   }
   async png(): Promise<void> {
+    let scene: Awaited<ReturnType<typeof createCaptureScene>> | null = null;
     try {
-      if (this.flat) {
-        this.flat.transparent = this.pngTransparent;
-        this.flat.invalidate();
-      }
-      this.spatial?.renderer.setClearAlpha(this.pngTransparent ? 0 : 1);
-      this.flat?.render(this.store.clock.phase);
-      this.spatial?.render(this.store.clock.phase);
-      const source = this.flat?.canvas ?? this.canvas.nativeElement,
-        canvas = document.createElement('canvas'),
-        scale = Math.min(this.pngScale, 4096 / source.width, 4096 / source.height);
-      canvas.width = Math.round(source.width * scale);
-      canvas.height = Math.round(source.height * scale);
-      canvas.getContext('2d')!.drawImage(source, 0, 0, canvas.width, canvas.height);
-      if (this.flat) {
-        this.flat.transparent = false;
-        this.flat.invalidate();
-      }
-      this.spatial?.renderer.setClearAlpha(1);
-      download(await capturePng(canvas), `${this.project.name}.png`);
+      scene = await createCaptureScene(
+        this.store,
+        this.flat,
+        this.contextLost() ? null : this.spatial,
+        { ...this.imageCapture },
+        this.pngScale,
+      );
+      scene.render(this.store.clock.phase);
+      download(await capturePng(scene.canvas), `${this.project.name}.png`);
     } catch (error) {
       this.error(error);
+    } finally {
+      scene?.dispose();
     }
   }
   async glb(): Promise<void> {
@@ -902,40 +1058,24 @@ export class StudioShell implements AfterViewInit, OnDestroy {
     this.recordingAbort = new AbortController();
     const abort = this.recordingAbort;
     this.recording.set(true);
-    const snapshot = new StudioStore(),
-      p = structuredClone(this.store.snapshot());
-    snapshot.project.set(p);
-    snapshot.offset = structuredClone(this.store.offset);
-    snapshot.terms = structuredClone(this.store.terms);
-    snapshot.circles3 = structuredClone(this.store.circles3);
-    snapshot.harmonics = structuredClone(this.store.harmonics);
-    snapshot.reconstruction = structuredClone(this.store.reconstruction);
-    snapshot.reference = structuredClone(this.store.reference);
-    const canvas = document.createElement('canvas');
-    let renderer: CanvasRenderer | import('../spatial/three-renderer').ThreeRenderer | null = null;
+    const p = structuredClone(this.store.snapshot());
+    let scene: Awaited<ReturnType<typeof createCaptureScene>> | null = null;
     try {
-      if (this.spatial) {
-        const { ThreeRenderer } = await import('../spatial/three-renderer');
-        if (abort.signal.aborted) return;
-        const spatial = new ThreeRenderer(canvas, snapshot, () => undefined);
-        renderer = spatial;
-        spatial.resize(1280, 720, 1);
-        spatial.fit();
-        spatial.setCamera(p.view.camera);
-        spatial.camera.position.copy(this.spatial.camera.position);
-        spatial.camera.zoom = this.spatial.camera.zoom;
-        spatial.camera.updateProjectionMatrix();
-        spatial.controls.target.copy(this.spatial.controls.target);
-        spatial.controls.update();
-      } else {
-        renderer = new CanvasRenderer(canvas, snapshot);
-        renderer.resize(1280, 720, 1);
-        renderer.fit();
-      }
-      const recordingRenderer = renderer;
+      scene = await createCaptureScene(
+        this.store,
+        this.flat,
+        this.contextLost() ? null : this.spatial,
+        {
+          ...this.videoCapture,
+          background:
+            this.videoCapture.background === 'transparent' ? 'dark' : this.videoCapture.background,
+        },
+      );
+      if (abort.signal.aborted) return;
+      const recordingScene = scene;
       const blob = await recordCycle(
-        canvas,
-        (t) => recordingRenderer.render(t),
+        scene.canvas,
+        (t) => recordingScene.render(t),
         abort.signal,
         8000 / p.playback.speed,
       );
@@ -943,8 +1083,7 @@ export class StudioShell implements AfterViewInit, OnDestroy {
     } catch (error) {
       this.error(error);
     } finally {
-      renderer?.dispose();
-      snapshot.dispose();
+      scene?.dispose();
       this.recording.set(false);
       this.recordingAbort = null;
     }
@@ -953,6 +1092,7 @@ export class StudioShell implements AfterViewInit, OnDestroy {
     this.recordingAbort?.abort();
   }
   ngOnDestroy(): void {
+    this.captureGeneration++;
     if (this.nameTimer) clearTimeout(this.nameTimer);
     this.captureView();
     this.recordingAbort?.abort();

@@ -1,3 +1,8 @@
+import { Line2 } from 'three/addons/lines/Line2.js';
+import { LineGeometry } from 'three/addons/lines/LineGeometry.js';
+import { LineMaterial } from 'three/addons/lines/LineMaterial.js';
+import { LineSegments2 } from 'three/addons/lines/LineSegments2.js';
+import { LineSegmentsGeometry } from 'three/addons/lines/LineSegmentsGeometry.js';
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { TransformControls } from 'three/addons/controls/TransformControls.js';
@@ -23,7 +28,7 @@ export class ThreeRenderer {
   static liveCount = 0;
   private disposed = false;
   private cachedCircles: Circle3[] | null = null;
-  private vectors: THREE.LineSegments | null = null;
+  private vectors: THREE.LineSegments | LineSegments2 | null = null;
   private lastSamples: CurveSamples | null = null;
   private appearanceKey = '';
   readonly renderer: THREE.WebGLRenderer;
@@ -32,10 +37,10 @@ export class ThreeRenderer {
   controls: OrbitControls;
   private transform: TransformControls;
   private content = new THREE.Group();
-  private chain: THREE.Line[] = [];
+  private chain: (THREE.Line | Line2)[] = [];
   private points: THREE.Mesh[] = [];
   private tip: THREE.Mesh;
-  private trace: THREE.Line | null = null;
+  private trace: THREE.Line | Line2 | null = null;
   private width = 1;
   private height = 1;
   private radius = 1;
@@ -44,6 +49,10 @@ export class ThreeRenderer {
   private dragStart: Point[] | null = null;
   sculpture: THREE.Mesh | null = null;
   tubeError = '';
+  background = '#151515';
+  transparent = false;
+  exportStyle = false;
+  lineWeight = 1.5;
   edit = false;
   depth = 0;
   constructor(
@@ -53,7 +62,7 @@ export class ThreeRenderer {
   ) {
     this.renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true });
     ThreeRenderer.liveCount++;
-    this.renderer.setClearColor('#151515');
+    this.renderer.setClearColor(this.background, this.transparent ? 0 : 1);
     this.camera = new THREE.PerspectiveCamera(42, 1, 0.01, 1000);
     this.camera.position.set(3, 2, 4);
     this.controls = new OrbitControls(this.camera, canvas);
@@ -204,17 +213,36 @@ export class ThreeRenderer {
     this.trace = null;
     this.vectors = null;
   }
-  private line(coordinates: Float64Array, color: string, closed = true): THREE.Line {
+  private line(coordinates: Float64Array, color: string, closed = true): THREE.Line | Line2 {
     const geometry = new THREE.BufferGeometry(),
       points = new Float32Array(coordinates.length + (closed ? 3 : 0));
     points.set(coordinates);
     if (closed) points.set(coordinates.slice(0, 3), coordinates.length);
+    if (this.exportStyle) {
+      const wide = new Line2(
+        new LineGeometry().setPositions(points),
+        new LineMaterial({
+          color,
+          linewidth:
+            color === this.store.project().appearance.color
+              ? this.store.project().appearance.width
+              : 1.25 * this.lineWeight,
+          depthWrite: false,
+          resolution: new THREE.Vector2(this.width, this.height),
+        }),
+      );
+      this.content.add(wide);
+      wide.userData['spectrum'] = color === this.store.project().appearance.color;
+      geometry.dispose();
+      return wide;
+    }
     geometry.setAttribute('position', new THREE.BufferAttribute(points, 3));
     const line = new THREE.Line(
       geometry,
       new THREE.LineBasicMaterial({ color, depthWrite: false }),
     );
     this.content.add(line);
+    line.userData['spectrum'] = color === this.store.project().appearance.color;
     return line;
   }
   rebuild(): void {
@@ -224,7 +252,7 @@ export class ThreeRenderer {
     this.releaseContent();
     this.lastSamples = s;
     this.appearanceKey = JSON.stringify(p.appearance);
-    this.renderer.setClearColor('#151515');
+    this.renderer.setClearColor(this.background, this.transparent ? 0 : 1);
     const color = p.appearance.color;
     (this.tip.material as THREE.MeshBasicMaterial).color.set(color);
     if (p.appearance.original && this.store.reference)
@@ -249,8 +277,26 @@ export class ThreeRenderer {
     );
     this.vectors = new THREE.LineSegments(
       vectorGeometry,
-      new THREE.LineBasicMaterial({ color: '#b7b7b7', depthWrite: false }),
+      new THREE.LineBasicMaterial({
+        color: this.exportStyle ? '#d0d4dd' : '#b7b7b7',
+        depthWrite: false,
+      }),
     );
+    if (this.exportStyle) {
+      this.vectors.geometry.dispose();
+      (this.vectors.material as THREE.Material).dispose();
+      this.vectors = new LineSegments2(
+        new LineSegmentsGeometry().setPositions(new Float32Array(Math.min(count, limit) * 6)),
+        new LineMaterial({
+          color: '#d0d4dd',
+          linewidth: 1.25 * this.lineWeight,
+          depthWrite: false,
+          resolution: new THREE.Vector2(this.width, this.height),
+        }),
+      );
+    }
+    // Endpoints change every frame; the initial zero-sized bounds are not valid for culling.
+    this.vectors.frustumCulled = false;
     this.vectors.visible = p.appearance.vectors;
     this.content.add(this.vectors);
     if (p.appearance.grid) {
@@ -275,7 +321,7 @@ export class ThreeRenderer {
             ) as unknown as Vec3);
         coords.set(v, j * 3);
       }
-      const orbit = this.line(coords, '#6b6b6b', false);
+      const orbit = this.line(coords, this.exportStyle ? '#969ca8' : '#6b6b6b', false);
       orbit.visible = p.appearance.circles;
       this.chain.push(orbit);
     }
@@ -389,7 +435,15 @@ export class ThreeRenderer {
     const start = [...this.store.offset] as [number, number, number];
     const count = circles?.length ?? this.store.harmonics.length;
     for (let i = 0; i < count; i++) {
-      const position = this.vectors?.geometry.getAttribute('position');
+      const position =
+        this.vectors instanceof LineSegments2
+          ? null
+          : this.vectors?.geometry.getAttribute('position');
+      const wideStart =
+        this.vectors instanceof LineSegments2
+          ? this.vectors.geometry.getAttribute('instanceStart')
+          : null;
+      if (wideStart && i < wideStart.count) wideStart.setXYZ(i, ...start);
       if (position && i * 2 < position.count) position.setXYZ(i * 2, ...start);
       if (i < this.chain.length) this.chain[i].position.set(...start);
       const h = this.store.harmonics[i],
@@ -402,15 +456,53 @@ export class ThreeRenderer {
             );
       for (let d = 0; d < 3; d++) start[d] += v[d];
       if (position && i * 2 < position.count) position.setXYZ(i * 2 + 1, ...start);
+      const wideEnd =
+        this.vectors instanceof LineSegments2
+          ? this.vectors.geometry.getAttribute('instanceEnd')
+          : null;
+      if (wideEnd && i < wideEnd.count) wideEnd.setXYZ(i, ...start);
     }
-    const attribute = this.vectors?.geometry.getAttribute('position');
+    if (this.vectors instanceof LineSegments2) {
+      this.vectors.geometry.getAttribute('instanceStart').needsUpdate = true;
+      this.vectors.geometry.getAttribute('instanceEnd').needsUpdate = true;
+    }
+    const attribute =
+      this.vectors instanceof LineSegments2
+        ? null
+        : this.vectors?.geometry.getAttribute('position');
     if (attribute) attribute.needsUpdate = true;
+    if (p.appearance.colorMode === 'spectrum') {
+      const hue = ((phase % 1) + 1) % 1;
+      this.content.traverse((object) => {
+        if (
+          (object instanceof THREE.Line || object instanceof Line2) &&
+          (object.material instanceof THREE.LineBasicMaterial ||
+            object.material instanceof LineMaterial) &&
+          object.userData['spectrum']
+        )
+          object.material.color.setHSL(hue, 0.85, 0.65);
+      });
+      for (let i = 0; i < this.chain.length; i++)
+        (this.chain[i].material as THREE.LineBasicMaterial).color.setHSL(
+          (hue + i * 0.07) % 1,
+          0.65,
+          0.65,
+        );
+      if (this.sculpture)
+        (this.sculpture.material as THREE.MeshStandardMaterial).color.setHSL(hue, 0.8, 0.6);
+      (this.tip.material as THREE.MeshBasicMaterial).color.setHSL(hue, 0.9, 0.7);
+    }
     this.tip.position.set(...start);
     this.tip.scale.setScalar(this.radius);
-    this.trace?.geometry.setDrawRange(
-      0,
-      Math.floor(phase * (this.store.reconstruction?.count ?? 0)) + 1,
-    );
+    if (this.trace instanceof Line2)
+      this.trace.geometry.instanceCount = Math.floor(
+        phase * Math.max(0, (this.store.reconstruction?.count ?? 0) - 1),
+      );
+    else
+      this.trace?.geometry.setDrawRange(
+        0,
+        Math.floor(phase * (this.store.reconstruction?.count ?? 0)) + 1,
+      );
     for (const m of this.points) m.visible = this.edit;
     this.controls.update();
     this.renderer.render(this.scene, this.camera);

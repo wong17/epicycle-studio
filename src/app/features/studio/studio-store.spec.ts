@@ -138,3 +138,31 @@ it('presetSelectionSurvivesImportAndClearsAfterGeometryEdit', async () => {
   }
   store.dispose();
 });
+
+it('changingTermCountDoesNotSetGlobalBusyOrPausePlayback', async () => {
+  vi.stubGlobal('Worker', undefined);
+  const store = new StudioStore();
+  vi.spyOn(store.repository, 'drafts').mockResolvedValue([]);
+  await store.init(2);
+  store.togglePlay();
+  const selecting = store.select();
+  expect(store.busy()).toBe(false);
+  expect(store.selecting()).toBe(true);
+  expect(store.playing()).toBe(true);
+  await selecting;
+  expect(store.selecting()).toBe(false);
+  store.dispose();
+});
+
+it('doesNotSampleAnOldSpectrumWhileSourceAnalysisIsBusy', async () => {
+  vi.stubGlobal('Worker', undefined);
+  const store = new StudioStore();
+  vi.spyOn(store.repository, 'drafts').mockResolvedValue([]);
+  await store.init(2);
+  store.busy.set(true);
+  const operation = store.select();
+  expect(store.selecting()).toBe(false);
+  await operation;
+  expect(store.busy()).toBe(true);
+  store.dispose();
+});

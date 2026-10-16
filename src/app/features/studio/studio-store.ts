@@ -1,3 +1,4 @@
+import { recommendTermCount } from '../../domain/fourier/recommendation';
 import { Injectable, computed, signal } from '@angular/core';
 import {
   Project,
@@ -96,6 +97,9 @@ export class StudioStore {
     );
   });
   readonly busy = signal(false);
+  readonly selecting = signal(false);
+  readonly recommendedCount = signal(64);
+  private selectionTimer: ReturnType<typeof setTimeout> | null = null;
   readonly notice = signal('');
   readonly dirty = signal(false);
   readonly revision = signal(0);
@@ -214,7 +218,10 @@ export class StudioStore {
   snapshot(): Project {
     return { ...this.project(), playback: { phase: this.clock.phase, speed: this.clock.speed } };
   }
-  async analyze(): Promise<void> {
+  async analyze(recommend = false): Promise<void> {
+    if (this.selectionTimer) clearTimeout(this.selectionTimer);
+    this.selectionTimer = null;
+    this.selecting.set(false);
     const generation = ++this.generation;
     this.selectionGeneration++;
     this.pause();
@@ -250,23 +257,33 @@ export class StudioStore {
         result = await this.client.analyze(prepared);
       if (result.status === 'cancelled' || generation !== this.generation) return;
       this.analysis = result.value;
+      if (result.value.kind === 'fourier2d') {
+        const count = recommendTermCount(result.value, prepared.sourceScale);
+        this.recommendedCount.set(count);
+        if (recommend) {
+          this.project.update((current) => ({
+            ...current,
+            analysis: { ...current.analysis, count, order: 'amplitude' },
+          }));
+          this.queueDraft();
+        }
+      }
       this.reference = restoreSampleFrame(prepared);
       this.sourceScale = prepared.sourceScale;
-      await this.select();
+      await this.select(true);
     } catch (error) {
       if (generation === this.generation) this.notice.set(explainError(error));
     } finally {
       if (generation === this.generation) this.busy.set(false);
     }
   }
-  async select(): Promise<void> {
+  async select(fromAnalysis = false): Promise<void> {
     const p = this.project(),
       a = this.analysis;
-    if (!a) return;
+    if (!a || (this.busy() && !fromAnalysis)) return;
     const selection = ++this.selectionGeneration,
       sourceGeneration = this.generation;
-    this.pause();
-    this.busy.set(true);
+    this.selecting.set(true);
     try {
       const count = Math.min(
           p.analysis.count,
@@ -303,7 +320,7 @@ export class StudioStore {
     } catch (error) {
       if (selection === this.selectionGeneration) this.notice.set(explainError(error));
     } finally {
-      if (selection === this.selectionGeneration) this.busy.set(false);
+      if (selection === this.selectionGeneration) this.selecting.set(false);
     }
   }
   evaluate(t: number): Point {
@@ -337,12 +354,19 @@ export class StudioStore {
           previous.analysis.count !== next.analysis.count ||
           previous.analysis.order !== next.analysis.order
         )
-          void this.select();
+          this.scheduleSelection();
         this.revision.update((x) => x + 1);
       }
     } catch (error) {
       this.notice.set(explainError(error));
     }
+  }
+  private scheduleSelection(): void {
+    if (this.selectionTimer) clearTimeout(this.selectionTimer);
+    this.selectionTimer = setTimeout(() => {
+      this.selectionTimer = null;
+      void this.select();
+    }, 80);
   }
   private queueDraft(): void {
     if (this.draftTimer) clearTimeout(this.draftTimer);
@@ -580,6 +604,7 @@ export class StudioStore {
     });
   }
   dispose(): void {
+    if (this.selectionTimer) clearTimeout(this.selectionTimer);
     this.client.dispose();
     this.clock.dispose();
     if (this.draftTimer) clearTimeout(this.draftTimer);

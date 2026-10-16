@@ -58,3 +58,7 @@ La suite de navegador sirve el build real por HTTP. Chromium, Firefox y WebKit s
 El ZIP listo para carga manual está en `artifacts/epicycle-studio-cloudflare-pages.zip`. También se puede subir directamente la carpeta `dist/epicycle-studio/browser`. El archivo `index.html` y las reglas `_headers` quedan en la raíz del ZIP. La subida la realiza el usuario; no requiere backend.
 
 Para reconstruir: `npm ci` y `npm run build`. Para integración Git en Pages: comando `npm run build`, salida `dist/epicycle-studio/browser`, Node indicado en `.nvmrc`. Ver [instrucciones de publicación y comprobaciones HTTPS](docs/release.md).
+
+El dibujo libre ajusta automáticamente la cantidad de epiciclos según el detalle. **Editar trazo** permite arrastrar zonas de una curva existente o del borrador actual y continuar con el lápiz; cancelar conserva el documento anterior. En **Lo que ves → Color del trazo** puedes activar **RGB animado**.
+
+El exportador tiene vista previa y opciones independientes para imagen/video: fondo oscuro por defecto, cuadrícula, zoom, grosor y encuadre horizontal, cuadrado o vertical. PNG y video incluyen RGB; SVG conserva el color base. El video se encuentra debajo de las acciones de imagen y proyecto. Los ajustes de exportación no alteran la vista del editor.

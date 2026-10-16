@@ -28,6 +28,7 @@ const spatialCircle = circle
 const source = z.discriminatedUnion('kind', [
   z.strictObject({
     kind: z.literal('curve2d'),
+    strokeStarts: z.array(z.number().int().min(0).max(9999)).max(10000).optional(),
     points: z.array(vec2).min(3).max(10000),
     closure: z.enum(['segment', 'return']),
   }),
@@ -78,6 +79,7 @@ export const projectSchema = z
     appearance: z.strictObject({
       theme: z.enum(['dark', 'light']),
       color: z.enum(['#d4f477', '#ffa68b', '#89dce6']),
+      colorMode: z.enum(['solid', 'spectrum']).optional(),
       width: number.min(1).max(6),
       original: z.boolean(),
       reconstruction: z.boolean(),
@@ -102,6 +104,16 @@ export const projectSchema = z
     }),
   })
   .superRefine((p, ctx) => {
+    if (p.source.kind === 'curve2d' && p.source.strokeStarts) {
+      const starts = p.source.strokeStarts;
+      const length = p.source.points.length;
+      if (
+        !starts.length ||
+        starts[0] !== 0 ||
+        starts.some((value, index) => value >= length || (index > 0 && value <= starts[index - 1]))
+      )
+        ctx.addIssue({ code: 'custom', message: 'Índices de trazos inválidos' });
+    }
     if (p.source.kind === 'curve2d' || p.source.kind === 'curve3d') {
       try {
         prepareCurve(
@@ -130,14 +142,20 @@ export type Project = z.infer<typeof projectSchema>;
 export type Source = Project['source'];
 export function exportProjectV1(p: Project): unknown {
   if (p.dimension !== 2) throw new Error('V1 sólo admite proyectos 2D');
-  const { sculpture, tubeRadius, representation, tolerance, ...appearance } = p.appearance;
+  const { sculpture, tubeRadius, representation, tolerance, colorMode, ...appearance } =
+    p.appearance;
   void sculpture;
   void tubeRadius;
   void representation;
   void tolerance;
+  void colorMode;
   return {
     ...p,
     schemaVersion: 1,
+    source:
+      p.source.kind === 'curve2d'
+        ? { kind: 'curve2d', points: p.source.points, closure: p.source.closure }
+        : p.source,
     appearance,
     view: { zoom: p.view.zoom, center: [p.view.center[0], p.view.center[1]] },
   };
