@@ -9,6 +9,9 @@ test('toolbarUsesOneAccessibleTooltipWithoutNativeDuplicate', async ({ page }) =
   const hint = page.getByRole('tooltip');
   await expect(hint).toHaveCount(1);
   await expect(hint).toHaveText('Limpiar lienzo y dibujar desde cero');
+  await expect(
+    page.getByRole('region', { name: 'Ayudas de controles' }).getByRole('tooltip'),
+  ).toBeVisible();
   await expect(clear).toHaveAttribute('aria-describedby', /studio-hint-/);
   await page.getByRole('button', { name: 'Crear desde…', exact: true }).hover();
   await expect(hint).toHaveCount(1);

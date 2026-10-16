@@ -1,16 +1,30 @@
-import { openDB, IDBPDatabase } from 'idb';
+import { openDB, IDBPDatabase, DBSchema } from 'idb';
 import { Project, migrateProject, projectSchema } from '../../domain/projects/project-schema';
+interface ProjectDatabase extends DBSchema {
+  projects: { key: string; value: unknown; indexes: { updatedAt: string } };
+  drafts: { key: string; value: unknown };
+  backups: { key: string; value: unknown };
+}
 export class ProjectRepository {
-  private db: Promise<IDBPDatabase> | null = null;
-  private open(): Promise<IDBPDatabase> {
-    return (this.db ??= openDB('epicycle-studio', 1, {
+  private db: Promise<IDBPDatabase<ProjectDatabase>> | null = null;
+  constructor(
+    private readonly openDatabase: typeof openDB<ProjectDatabase> = openDB<ProjectDatabase>,
+  ) {}
+  private open(): Promise<IDBPDatabase<ProjectDatabase>> {
+    if (this.db) return this.db;
+    const pending = this.openDatabase('epicycle-studio', 1, {
       upgrade(db) {
         const p = db.createObjectStore('projects', { keyPath: 'id' });
         p.createIndex('updatedAt', 'updatedAt');
         db.createObjectStore('drafts', { keyPath: 'id' });
         db.createObjectStore('backups', { keyPath: 'id' });
       },
-    }));
+    }).catch((error: unknown) => {
+      if (this.db === pending) this.db = null;
+      throw error;
+    });
+    this.db = pending;
+    return pending;
   }
   async list(): Promise<Project[]> {
     return (await (await this.open()).getAll('projects'))
@@ -22,13 +36,13 @@ export class ProjectRepository {
     return raw ? migrateProject(raw) : undefined;
   }
   async save(p: Project): Promise<void> {
-    projectSchema.parse(p);
+    const project = projectSchema.parse(p);
     const db = await this.open(),
       tx = db.transaction(['projects', 'drafts', 'backups'], 'readwrite'),
-      old = await tx.objectStore('projects').get(p.id);
+      old = await tx.objectStore('projects').get(project.id);
     if (old) await tx.objectStore('backups').put(old);
-    await tx.objectStore('projects').put(p);
-    await tx.objectStore('drafts').delete(p.id);
+    await tx.objectStore('projects').put(project);
+    await tx.objectStore('drafts').delete(project.id);
     await tx.done;
   }
   async draft(p: Project): Promise<void> {
@@ -49,7 +63,11 @@ export class ProjectRepository {
     await tx.done;
   }
   async close(): Promise<void> {
-    if (this.db) (await this.db).close();
+    const pending = this.db;
     this.db = null;
+    if (!pending) return;
+    // A rejected open was already reported to its caller and acquired no connection.
+    const [connection] = await Promise.allSettled([pending]);
+    if (connection.status === 'fulfilled') connection.value.close();
   }
 }

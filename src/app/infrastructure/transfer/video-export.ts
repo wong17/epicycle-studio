@@ -39,24 +39,35 @@ export function recordCycle(
     const chunks: Blob[] = [];
     let raf = 0,
       start: number | null = null,
-      failed = false;
+      failed = false,
+      cleaned = false;
     const clean = () => {
+      if (cleaned) return;
+      cleaned = true;
       cancelAnimationFrame(raf);
       tracks.forEach((t) => t.stop());
       signal.removeEventListener('abort', cancel);
       document.removeEventListener('visibilitychange', hidden);
     };
-    const cancel = () => {
+    const fail = (error: unknown) => {
+      if (failed) return;
       failed = true;
       clean();
-      if (recorder.state !== 'inactive') recorder.stop();
-      reject(
+      let reason = error;
+      try {
+        if (recorder.state !== 'inactive') recorder.stop();
+      } catch (stopError) {
+        reason = new AggregateError([error, stopError], 'La grabación falló al detenerse');
+      }
+      reject(reason);
+    };
+    const cancel = () =>
+      fail(
         new DOMException(
           'Grabación cancelada. Mantén la pestaña visible para grabar.',
           'AbortError',
         ),
       );
-    };
     const hidden = () => {
       if (document.hidden) cancel();
     };
@@ -64,9 +75,7 @@ export function recordCycle(
       if (e.data.size) chunks.push(e.data);
     };
     recorder.onerror = () => {
-      failed = true;
-      clean();
-      reject(new Error('El codificador de video falló. Puedes exportar PNG o GLB.'));
+      fail(new Error('El codificador de video falló. Puedes exportar PNG o GLB.'));
     };
     recorder.onstop = () => {
       clean();
@@ -78,22 +87,28 @@ export function recordCycle(
     signal.addEventListener('abort', cancel, { once: true });
     document.addEventListener('visibilitychange', hidden);
     const frame = (now: number) => {
+      if (failed) return;
       if (start === null) start = now;
       const phase = (now - start) / durationMs;
       try {
         render(Math.min(0.99999, phase));
+        if (phase >= 1) recorder.stop();
+        else raf = requestAnimationFrame(frame);
       } catch (error) {
-        failed = true;
-        clean();
-        recorder.stop();
-        reject(error);
+        fail(error);
         return;
       }
-      if (phase >= 1) recorder.stop();
-      else raf = requestAnimationFrame(frame);
     };
-    render(0);
-    recorder.start(200);
-    raf = requestAnimationFrame(frame);
+    try {
+      render(0);
+      if (signal.aborted) {
+        cancel();
+        return;
+      }
+      recorder.start(200);
+      raf = requestAnimationFrame(frame);
+    } catch (error) {
+      fail(error);
+    }
   });
 }

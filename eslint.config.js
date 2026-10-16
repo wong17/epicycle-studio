@@ -12,7 +12,24 @@ export default tseslint.config(
     processor: angular.processInlineTemplates,
     rules: {
       '@typescript-eslint/no-explicit-any': 'error',
+      'no-eval': 'error',
+      'no-implied-eval': 'error',
+      'no-new-func': 'error',
       '@angular-eslint/prefer-inject': 'off',
+    },
+  },
+  {
+    files: ['**/*.ts'],
+    ignores: ['src/app/domain/validation/zod.ts'],
+    rules: {
+      'no-restricted-imports': [
+        'error',
+        {
+          patterns: [
+            { regex: '^zod(?:/|$)', message: 'Use the CSP-safe domain/validation/zod module.' },
+          ],
+        },
+      ],
     },
   },
   {

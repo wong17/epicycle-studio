@@ -264,10 +264,8 @@ test('fullViewportWorkspaceAndCollapsibleChrome', async ({ page }) => {
     const exports = page.getByRole('button', { name: 'Exportar y compartir', exact: true });
     await page.keyboard.press('Tab');
     await exports.focus();
-    await expect(exports).toHaveAttribute('title', 'Exportar y compartir');
-    expect(await exports.evaluate((button) => getComputedStyle(button, '::after').visibility)).toBe(
-      'visible',
-    );
+    await expect(exports).not.toHaveAttribute('title');
+    await expect(page.getByRole('tooltip')).toHaveText('Exportar y compartir');
     await page.keyboard.press('Enter');
     const png = page.getByRole('button', { name: 'Imagen PNG', exact: true });
     await png.hover();

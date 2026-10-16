@@ -171,6 +171,7 @@ export class CanvasRenderer {
       }
       return;
     }
+    if (!this.store.reconstruction) return;
     let ink: string | CanvasGradient = p.appearance.color;
     if (p.appearance.colorMode === 'spectrum') {
       const gradient = c.createLinearGradient(

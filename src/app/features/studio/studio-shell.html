@@ -626,7 +626,9 @@
         <button
           class="play primary icon-button"
           (click)="togglePlay()"
-          [disabled]="store.busy() || (drawing() && !pending())"
+          [disabled]="
+            store.busy() || (!drawing() && !store.reconstruction) || (drawing() && !pending())
+          "
           [attr.aria-label]="store.playing() ? 'Pausar' : 'Reproducir'"
           [data-tooltip]="store.playing() ? 'Pausar' : 'Reproducir'"
         >

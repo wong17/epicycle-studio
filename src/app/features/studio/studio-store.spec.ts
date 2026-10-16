@@ -1,8 +1,13 @@
 import { it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { StudioStore } from './studio-store';
+import { WorkerClient } from '../../infrastructure/compute/worker-client';
+import { createCaptureScene, defaultCapture } from './capture-scene';
 import { parseProject, migrateProject, createProject } from '../../domain/projects/project-schema';
 beforeEach(() => vi.stubGlobal('matchMedia', () => ({ matches: false })));
-afterEach(() => vi.unstubAllGlobals());
+afterEach(() => {
+  vi.unstubAllGlobals();
+  vi.useRealTimers();
+});
 it('rejectsDegenerateImportBeforeReplacement', () => {
   const store = new StudioStore(),
     p = store.snapshot();
@@ -285,5 +290,117 @@ it('recoveredDraftRemainsUnsavedUntilExplicitSave', async () => {
   await store.save();
   expect(store.dirty()).toBe(false);
   expect(store.recovery()).toBeNull();
+  store.dispose();
+});
+
+it('failedSourceCalculationClearsStaleGeometryAndRetryRestoresIt', async () => {
+  vi.stubGlobal('Worker', undefined);
+  const store = new StudioStore();
+  vi.spyOn(store.repository, 'drafts').mockResolvedValue([]);
+  vi.spyOn(store.repository, 'draft').mockResolvedValue();
+  await store.init(2);
+  expect(store.reconstruction).not.toBeNull();
+  vi.stubGlobal(
+    'Worker',
+    class {
+      constructor() {
+        throw new Error('Worker offline');
+      }
+    },
+  );
+  store.edit((project) => {
+    if (project.source.kind === 'curve2d') project.source.points[0] = [0.1, 0.2];
+  });
+  await vi.waitFor(() => expect(store.busy()).toBe(false));
+  expect(store.reconstruction).toBeNull();
+  expect(store.reference).toBeNull();
+  expect(store.analysis).toBeNull();
+  expect(store.terms).toEqual([]);
+  expect(store.harmonics).toEqual([]);
+  expect(store.notice()).toContain('Worker offline');
+  store.togglePlay();
+  expect(store.playing()).toBe(false);
+  vi.stubGlobal('Worker', undefined);
+  await store.analyze();
+  expect(store.reconstruction).not.toBeNull();
+  store.dispose();
+});
+
+it('importedCopyQueuesRecoveryOnlyAfterSuccessfulCalculation', async () => {
+  vi.useFakeTimers();
+  vi.stubGlobal('Worker', undefined);
+  const store = new StudioStore();
+  const draft = vi.spyOn(store.repository, 'draft').mockResolvedValue();
+  const source = createProject(2, {
+    kind: 'manual2d',
+    offset: [0, 0],
+    circles: [{ id: crypto.randomUUID(), frequency: 1, radius: 1, phase: 0 }],
+  });
+  expect(await store.load(source, { asCopy: true })).toBe(true);
+  expect(draft).not.toHaveBeenCalled();
+  await vi.advanceTimersByTimeAsync(1000);
+  expect(draft).toHaveBeenCalledExactlyOnceWith(store.snapshot());
+  expect(store.project().id).not.toBe(source.id);
+  store.dispose();
+  vi.useRealTimers();
+});
+
+it('failedSelectionClearsStaleGeometryAndCanRecalculate', async () => {
+  vi.stubGlobal('Worker', undefined);
+  const store = new StudioStore();
+  vi.spyOn(store.repository, 'drafts').mockResolvedValue([]);
+  await store.init(2);
+  const sampling = vi
+    .spyOn(WorkerClient.prototype, 'sample2D')
+    .mockRejectedValueOnce(new Error('Sampling offline'));
+  await store.select();
+  expect(store.reconstruction).toBeNull();
+  expect(store.reference).toBeNull();
+  expect(store.analysis).toBeNull();
+  expect(store.terms).toEqual([]);
+  expect(store.selecting()).toBe(false);
+  expect(store.notice()).toContain('Sampling offline');
+  sampling.mockRestore();
+  await store.analyze();
+  expect(store.reconstruction).not.toBeNull();
+  store.dispose();
+});
+
+it('failedImportedSamplingRestoresPreviousDocumentAndGeometry', async () => {
+  vi.stubGlobal('Worker', undefined);
+  const store = new StudioStore();
+  vi.spyOn(store.repository, 'drafts').mockResolvedValue([]);
+  await store.init(2);
+  const previous = store.snapshot();
+  const geometry = store.reconstruction;
+  const analysis = store.analysis;
+  const sampling = vi
+    .spyOn(WorkerClient.prototype, 'sample2D')
+    .mockRejectedValueOnce(new Error('Sampling offline'));
+  const next = createProject(2, {
+    kind: 'curve2d',
+    points: [
+      [0, 0],
+      [1, 0],
+      [1, 1],
+    ],
+    closure: 'return',
+  });
+  expect(await store.load(next, { asCopy: true })).toBe(false);
+  expect(store.project()).toEqual(previous);
+  expect(store.reconstruction).toBe(geometry);
+  expect(store.analysis).toBe(analysis);
+  expect(store.dirty()).toBe(false);
+  expect(store.notice()).toContain('Sampling offline');
+  sampling.mockRestore();
+  store.dispose();
+});
+
+it('captureWithoutCalculatedGeometryRejectsInsteadOfExportingStaleContent', async () => {
+  const store = new StudioStore();
+  await expect(createCaptureScene(store, null, null, defaultCapture())).rejects.toThrow(
+    'No hay una curva calculada',
+  );
+  expect(store.reconstruction).toBeNull();
   store.dispose();
 });

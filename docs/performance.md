@@ -4,7 +4,7 @@
 
 La suite `recordsDesktopFrameBudgetAndLazyLoading` mide intervalos RAF durante 2.5 segundos por escena a 1440×900 y DPR 1, Chromium 156 de Playwright, Windows. Usa el build real servido por HTTP. La escena estándar usa N=512, K=64 / H=32, hasta 48/64 órbitas visibles en 3D, sin texturas ni postprocesado. El detalle completo sigue interviniendo en el lápiz y en la reconstrucción.
 
-`docs/performance-measured.json` contiene percentiles y URLs observadas. La referencia inicial registró p50 cercano a 16.7 ms y p95 cercano a 16.8 ms, con 37 draw calls en la escena estándar. Es una medición local corta; no demuestra rendimiento sostenido ni batería/GPU de un teléfono.
+`docs/performance-measured.json` conserva una referencia histórica de percentiles y URLs observadas. Cada ejecución actual adjunta `performance-measured.json` al reporte de Playwright y lo escribe dentro de `test-results`, sin modificar documentos versionados. La referencia inicial registró p50 cercano a 16.7 ms y p95 cercano a 16.8 ms, con 37 draw calls en la escena estándar. Es una medición local corta; no demuestra rendimiento sostenido ni batería/GPU de un teléfono.
 
 `scripts/measure.mjs` calcula gzip real de cada chunk y 25 ejecuciones de FFT pura en N=2048. La referencia inicial obtuvo mediana 0.26 ms y p95 1.14 ms. Esa medida excluye preparación, puesta en marcha del worker y transferencia: no equivale a latencia completa de análisis. Consultar JSON medido para resultados de la última ejecución.
 
@@ -27,3 +27,5 @@ La última medición con el lienzo completo a 1440×900 registró 37 draw calls,
 Actualización de la escena inicial — 2026-10-14: el nuevo nudo con tubo, órbitas y vectores inicialmente ocultos registró 5 draw calls y p95 cercano a 16.7 ms en la medición corta local, tanto en 2D como en 3D. Es una escena distinta de la referencia anterior de 37 draw calls; no demuestra el coste de activar todas las órbitas ni rendimiento sostenido en teléfonos. El JSON medido corresponde a esta última ejecución. El CSS del shell genera una advertencia de tamaño (13.65 kB frente a aviso de 12 kB y límite de error de 16 kB); no se aumentaron presupuestos para ocultarla.
 
 Entrega para Pages: órbitas y vectores ahora están activos por defecto. La última medición corta a 1440×900 registra 38 draw calls y p95 cercano a 16.7 ms en ambos modos. Sustituye el estado anterior de la escena inicial en `performance-measured.json`; las mediciones sostenidas y en móviles físicos siguen pendientes. El aviso CSS actual es de 13.86 kB frente a 12 kB.
+
+Revisión 2026-10-16: Chromium usa el canal completo en headless actual. Las advertencias CSS descritas arriba corresponden a entregas históricas; el build de esta revisión cumple los presupuestos sin advertencias. La medición breve adjunta a las pruebas sigue sin sustituir las mediciones sostenidas del plan.

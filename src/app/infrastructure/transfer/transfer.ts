@@ -1,5 +1,5 @@
 import { Project, parseProject, projectSchema } from '../../domain/projects/project-schema';
-import { z } from 'zod';
+import { z } from '../../domain/validation/zod';
 import { CurveSamples } from '../../domain/model';
 export function download(blob: Blob, name: string): void {
   const url = URL.createObjectURL(blob),

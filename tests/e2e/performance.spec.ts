@@ -48,5 +48,7 @@ test('recordsDesktopFrameBudgetAndLazyLoading', async ({ page }, info) => {
     loaded2d,
     additional3d: urls.filter((url) => !loaded2d.includes(url)),
   };
-  await writeFile('docs/performance-measured.json', JSON.stringify(report, null, 2));
+  const path = info.outputPath('performance-measured.json');
+  await writeFile(path, JSON.stringify(report, null, 2));
+  await info.attach('performance-measured', { path, contentType: 'application/json' });
 });

@@ -212,6 +212,7 @@ export class StudioStore {
     this.playing.set(false);
   }
   togglePlay(): void {
+    if (!this.reconstruction || this.busy()) return;
     if (this.playing()) this.pause();
     else {
       this.clock.play();
@@ -279,7 +280,10 @@ export class StudioStore {
       this.sourceScale = prepared.sourceScale;
       await this.select(true);
     } catch (error) {
-      if (generation === this.generation) this.notice.set(explainError(error));
+      if (generation === this.generation) {
+        this.invalidateCalculation();
+        this.notice.set(explainError(error));
+      }
     } finally {
       if (generation === this.generation) this.busy.set(false);
     }
@@ -325,10 +329,25 @@ export class StudioStore {
       }
       this.revision.update((x) => x + 1);
     } catch (error) {
-      if (selection === this.selectionGeneration) this.notice.set(explainError(error));
+      if (selection === this.selectionGeneration) {
+        this.invalidateCalculation();
+        this.notice.set(explainError(error));
+      }
     } finally {
       if (selection === this.selectionGeneration) this.selecting.set(false);
     }
+  }
+  private invalidateCalculation(): void {
+    this.pause();
+    this.analysis = null;
+    this.reference = null;
+    this.reconstruction = null;
+    this.terms = [];
+    this.harmonics = [];
+    this.circles3 = [];
+    this.offset = this.project().dimension === 2 ? [0, 0] : [0, 0, 0];
+    this.error = { rms: 0, max: 0 };
+    this.revision.update((value) => value + 1);
   }
   evaluate(t: number): Point {
     const p = this.project();
@@ -427,7 +446,7 @@ export class StudioStore {
       this.project().id !== targetId
     )
       return false;
-    if (this.reconstruction === render.reconstruction) {
+    if (!this.reconstruction || this.reconstruction === render.reconstruction) {
       if (this.draftTimer) clearTimeout(this.draftTimer);
       this.draftTimer = null;
       this.project.set(previous);
@@ -451,6 +470,7 @@ export class StudioStore {
       return false;
     }
     this.history.clear();
+    if (this.dirty()) this.queueDraft();
     return true;
   }
   async save(): Promise<void> {

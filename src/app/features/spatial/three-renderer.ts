@@ -248,10 +248,12 @@ export class ThreeRenderer {
   rebuild(): void {
     const p = this.store.project(),
       s = this.store.reconstruction;
-    if (!s) return;
     this.releaseContent();
     this.lastSamples = s;
     this.appearanceKey = JSON.stringify(p.appearance);
+    this.cachedCircles = null;
+    this.tip.visible = Boolean(s);
+    if (!s) return;
     this.renderer.setClearColor(this.background, this.transparent ? 0 : 1);
     const color = p.appearance.color;
     (this.tip.material as THREE.MeshBasicMaterial).color.set(color);

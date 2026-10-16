@@ -75,6 +75,8 @@ class TooltipLayer {
         .withPush(true),
       scrollStrategy: this.overlay.scrollStrategies.reposition(),
     });
+    ref.hostElement.setAttribute('role', 'region');
+    ref.hostElement.setAttribute('aria-label', 'Ayudas de controles');
     this.ref = ref;
     this.anchor = anchor;
     this.description = anchor.getAttribute('aria-describedby');

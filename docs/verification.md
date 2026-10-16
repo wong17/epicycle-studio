@@ -147,3 +147,29 @@ Se eliminó la combinación de ayuda CSS y `title` nativo. Una directiva tipada 
 - `keyboardPlaybackDoesNotKeepAnOutdatedTooltip`: cambio Reproducir/Pausar sin ayuda obsoleta.
 - `capture.spec.ts` y `tooltips-layout.spec.ts`: **18/18 escenarios aprobados** en Chromium, Firefox y WebKit. Inspección visual de la captura a 320 px.
 - **172 pruebas unitarias aprobadas**, lint y build de producción sin diagnósticos de aplicación. Las vistas móviles son emuladas en navegador.
+
+## Seguridad y revisión de calidad — 2026-10-16
+
+La regresión reprodujo `script-src: eval` con el build anterior, tanto con CSP en informe como obligatoria. Se rastreó a la comprobación de capacidades y compilación JIT de Zod. La configuración `jitless` vive en `domain/validation/zod.ts` y se ejecuta antes de construir esquemas; ESLint impide importar Zod directamente fuera de ese módulo y prohíbe `eval`, evaluación implícita y `new Function`.
+
+El build también generaba un script inline para activar la hoja CSS crítica. Se desactivó únicamente `inlineCritical`; se conservan minificación y optimización de scripts. La hoja externa carga sin JavaScript inline. La CSP conserva sus directivas y ahora se aplica mediante `Content-Security-Policy`; no se añadió `unsafe-eval`. El servidor de preview lee los headers globales del artefacto, de modo que las pruebas ejercitan esa política en todas las rutas.
+
+La revisión independiente encontró y se corrigieron tres defectos: fugas de tracks/listeners si falla el arranque del grabador; geometría de una fuente anterior después de un fallo de análisis/muestreo; y copias importadas sin borrador automático. La fuente se conserva al fallar el cálculo, la geometría inválida se retira de ambos renderizadores y no se permite capturarla. Una importación fallida restaura el documento y geometría anteriores. La base IndexedDB está tipada y sus registros se tratan como `unknown` hasta validarlos; el guardado persiste el resultado de la validación. Un fallo al abrir libera la conexión pendiente para permitir reintentar; cerrar durante ese fallo no genera un segundo rechazo ni elimina una conexión más reciente.
+
+| Requisito                                                                   | Evidencia                                                                                                             |
+| --------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------- |
+| CSP efectiva, sin scripts inline, infracciones ni avisos/errores en consola | `productionValidationRespectsCsp`: carga 2D, JSON, importación, guardado, 3D, recarga y aprendizaje                   |
+| Fallo de análisis sin geometría obsoleta, reproducción detenida y reintento | `failedSourceCalculationClearsStaleGeometryAndRetryRestoresIt`                                                        |
+| Fallo de muestreo y recuperación de una importación fallida                 | `failedSelectionClearsStaleGeometryAndCanRecalculate`, `failedImportedSamplingRestoresPreviousDocumentAndGeometry`    |
+| Captura inválida rechazada                                                  | `captureWithoutCalculatedGeometryRejectsInsteadOfExportingStaleContent`                                               |
+| Reintento de IndexedDB y cierre durante fallo de apertura                   | `failedDatabaseOpenCanRetryWithoutPoisoningTheRepository`, `closeDuringFailedOpenReleasesOnlyItsOwnPendingConnection` |
+| Recuperación automática de copias importadas                                | `importedCopyQueuesRecoveryOnlyAfterSuccessfulCalculation`                                                            |
+| Liberación de tracks y listeners ante fallo de render o arranque            | `recordingStartupFailureReleasesTracksAndListeners-render`, `recordingStartupFailureReleasesTracksAndListeners-start` |
+
+Chromium usa el canal `chromium` completo en headless actual, conforme a la documentación de Playwright. Con el ejecutable headless reducido aparecían avisos nativos de ReadPixels, aun sin llamadas de lectura de GPU en la aplicación. El canal completo pasó la comprobación de consola vacía, sin filtros de mensajes ni flags que desactiven diagnósticos. En el entorno local se resolvió también la combinación contradictoria de `NO_COLOR` y `FORCE_COLOR` antes de ejecutar Playwright, sin desactivar avisos de Node.
+
+Validación local: **181 pruebas unitarias aprobadas** en 22 archivos; lint y build de producción sin diagnósticos. La revisión y las pruebas locales no acreditan teléfonos físicos, drivers de terceros, CI alojada ni el despliegue público de esta revisión.
+
+La pasada completa también detectó un test antiguo que esperaba el `title` nativo eliminado y una infracción axe de región en las ayudas flotantes. La prueba ahora exige una sola ayuda accesible y ausencia de `title`; cada overlay de ayuda tiene su propia región con nombre, que desaparece al cerrarse. No se añaden landmarks permanentes al contenedor compartido con otros diálogos. Las mediciones de rendimiento se adjuntan al reporte de Playwright en lugar de modificar archivos versionados.
+
+Resultado de navegador: la pasada completa de 132 escenarios aprobó 123, omitió cuatro de forma deliberada y detectó cinco fallos (tres expectativas antiguas de `title` y dos infracciones de región accesible). Corregidos ambos motivos, la repetición final de estudio, layout, tooltips, CSP, rendimiento y borradores aprobó **59/59 escenarios ejecutados**, con cuatro omisiones deliberadas. En conjunto quedaron verificados **128 escenarios distintos aprobados y cuatro omisiones**, sin fallos pendientes; no se presenta la pasada inicial como verde. La prueba CSP terminó sin infracciones, warnings, errores de consola ni errores no manejados en Chromium, Firefox y WebKit.

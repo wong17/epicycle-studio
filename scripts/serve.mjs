@@ -12,6 +12,20 @@ const root = resolve('dist/epicycle-studio/browser'),
     '.json': 'application/json',
     '.png': 'image/png',
   };
+// Apply the deployment's global security headers in local production previews too.
+const headerFile = await readFile(resolve(root, '_headers'), 'utf8');
+const globalBlock = headerFile.match(/^\/\*\r?\n((?:[ \t]+[^\r\n]*\r?\n)+)/m)?.[1];
+if (!globalBlock) throw new Error('Build is missing global security headers');
+const securityHeaders = Object.fromEntries(
+  globalBlock
+    .trim()
+    .split(/\r?\n/)
+    .map((line) => {
+      const separator = line.indexOf(':');
+      if (separator < 1) throw new Error('Invalid deployment security header');
+      return [line.slice(0, separator).trim(), line.slice(separator + 1).trim()];
+    }),
+);
 createServer(async (req, res) => {
   try {
     const pathname = decodeURIComponent(new URL(req.url, 'http://127.0.0.1').pathname),
@@ -34,6 +48,7 @@ createServer(async (req, res) => {
     }
     const bytes = await readFile(target);
     res.writeHead(200, {
+      ...securityHeaders,
       'Content-Type': mime[extname(target)] ?? 'application/octet-stream',
       'Cache-Control': extname(target) === '.html' ? 'no-cache' : 'public, max-age=3600',
       'X-Content-Type-Options': 'nosniff',

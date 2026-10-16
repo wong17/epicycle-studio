@@ -1,4 +1,4 @@
-import { z } from 'zod';
+import { z } from '../validation/zod';
 import { prepareCurve } from '../curves/prepare-curve';
 const number = z.number().finite(),
   coordinate = number.min(-1e6).max(1e6),

@@ -32,6 +32,8 @@ export async function createCaptureScene(
   settings: CaptureSettings,
   scale = 1,
 ) {
+  if (!source.reconstruction)
+    throw new Error('No hay una curva calculada para exportar. Reintenta el cálculo.');
   const snapshot = new StudioStore();
   const p = structuredClone(source.snapshot());
   p.appearance.grid = settings.grid;
