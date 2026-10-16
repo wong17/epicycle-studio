@@ -126,7 +126,7 @@ input[type='range'] {
   border: 1px solid transparent;
   border-radius: 7px;
 }
-.studio .icon-button::after {
+.studio .icon-button[data-tooltip]:not([data-tooltip=''])::after {
   content: attr(data-tooltip);
   position: absolute;
   z-index: 30;
@@ -145,10 +145,15 @@ input[type='range'] {
   opacity: 0;
   visibility: hidden;
 }
-.studio .icon-button:hover::after,
-.studio .icon-button:focus::after {
+.studio .icon-button[data-tooltip]:not([data-tooltip='']):hover::after,
+.studio .icon-button[data-tooltip]:not([data-tooltip='']):focus-visible::after {
   opacity: 1;
   visibility: visible;
+}
+.studio .icon-button[data-tooltip-align='end']::after {
+  left: auto;
+  right: 0;
+  transform: none;
 }
 .studio .selected {
   background: #d4f47716 !important;

@@ -153,6 +153,7 @@
         [attr.aria-pressed]="captureMode === 'image'"
         (click)="configureCapture('image')"
         title="Previsualizar imagen"
+        data-tooltip="Previsualizar imagen"
         aria-label="Previsualizar imagen"
       >
         <studio-icon name="image" />
@@ -163,6 +164,7 @@
         [attr.aria-pressed]="captureMode === 'video'"
         (click)="configureCapture('video')"
         title="Previsualizar video"
+        data-tooltip="Previsualizar video"
         aria-label="Previsualizar video"
       >
         <studio-icon name="video" />
@@ -172,6 +174,8 @@
         class="icon-button"
         (click)="refreshCapture()"
         title="Actualizar vista previa"
+        data-tooltip="Actualizar vista previa"
+        data-tooltip-align="end"
         aria-label="Actualizar vista previa"
       >
         <studio-icon name="rotate" />

@@ -136,3 +136,45 @@ test('capturePanelFitsMobileAndSpatialPngKeepsDarkBackground', async ({ page }, 
   await page.getByRole('button', { name: 'Exportar y compartir', exact: true }).click();
   await expect(page.locator('canvas[data-ready]')).toHaveAttribute('data-live-renderers', '1');
 });
+
+test('exportHoverOnlyShowsNonEmptyHintsAndDoesNotLeaveMouseFocusHints', async ({ page }) => {
+  await page.goto('/studio/2d');
+  await expect(page.locator('canvas[data-ready]')).toHaveAttribute('data-ready', 'true');
+  await page.getByRole('button', { name: 'Exportar y compartir', exact: true }).click();
+  const image = page.getByRole('button', { name: 'Previsualizar imagen', exact: true });
+  const video = page.getByRole('button', { name: 'Previsualizar video', exact: true });
+  const hints = () =>
+    page.locator('.icon-button').evaluateAll((buttons) =>
+      buttons.flatMap((button) => {
+        const style = getComputedStyle(button, '::after');
+        if (
+          style.visibility !== 'visible' ||
+          style.opacity === '0' ||
+          style.content === 'none' ||
+          style.content === 'normal'
+        )
+          return [];
+        return [style.content.replace(/^["']|["']$/g, '')];
+      }),
+    );
+  await image.click();
+  await video.hover();
+  await expect.poll(hints).toEqual(['Previsualizar video']);
+  await page.getByRole('heading', { name: 'Exportar creación', exact: true }).hover();
+  await expect.poll(hints).toEqual([]);
+  await page.keyboard.press('Tab');
+  await expect(video).toBeFocused();
+  await expect.poll(hints).toEqual(['Previsualizar video']);
+  await page.keyboard.press('Tab');
+  const refresh = page.getByRole('button', { name: 'Actualizar vista previa', exact: true });
+  await expect(refresh).toBeFocused();
+  await expect.poll(hints).toEqual(['Actualizar vista previa']);
+  const hintBounds = await refresh.evaluate((button) => {
+    const style = getComputedStyle(button, '::after');
+    const right = button.getBoundingClientRect().right - parseFloat(style.right);
+    return { left: right - parseFloat(style.width), right, viewport: innerWidth };
+  });
+  expect(hintBounds.left).toBeGreaterThanOrEqual(0);
+  expect(hintBounds.right).toBeLessThanOrEqual(hintBounds.viewport);
+  await page.screenshot({ path: test.info().outputPath('export-hover-hint.png') });
+});
