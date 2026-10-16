@@ -2,6 +2,7 @@ import { getPreset } from '../../domain/curves/presets';
 import { Component, input } from '@angular/core';
 
 const paths: Record<string, string> = {
+  text: 'M3 5h18M12 5v15M8 20h8M3 5v3m18-3v3',
   circle: 'M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18',
   ellipse: 'M12 6a10 6 0 1 0 0 12 10 6 0 1 0 0-12',
   star: 'M12 2l3 7 7 1-5 5 1 7-6-4-6 4 1-7-5-5 7-1z',

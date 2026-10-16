@@ -166,3 +166,124 @@ it('doesNotSampleAnOldSpectrumWhileSourceAnalysisIsBusy', async () => {
   expect(store.busy()).toBe(true);
   store.dispose();
 });
+
+it('failedCreatedCurveRestoresPreviousDocumentGeometryAndDirtyState', async () => {
+  vi.stubGlobal('Worker', undefined);
+  const store = new StudioStore();
+  vi.spyOn(store.repository, 'drafts').mockResolvedValue([]);
+  vi.spyOn(store.repository, 'draft').mockResolvedValue();
+  await store.init(2);
+  store.edit((project) => {
+    project.name = 'Mi creación anterior';
+  }, false);
+  const previous = store.snapshot();
+  const reconstruction = store.reconstruction;
+  const reference = store.reference;
+  vi.stubGlobal(
+    'Worker',
+    class {
+      constructor() {
+        throw new Error('Worker no disponible');
+      }
+    },
+  );
+  const next = createProject(
+    2,
+    {
+      kind: 'curve2d',
+      points: [
+        [0, 0],
+        [1, 0],
+        [1, 1],
+      ],
+      closure: 'return',
+    },
+    'Nuevo',
+  );
+  expect(await store.load(next, { recommend: true })).toBe(false);
+  expect(store.project()).toEqual(previous);
+  expect(store.reconstruction).toBe(reconstruction);
+  expect(store.reference).toBe(reference);
+  expect(store.dirty()).toBe(true);
+  expect(store.playing()).toBe(false);
+  expect(store.notice()).toContain('Worker no disponible');
+  store.dispose();
+});
+
+it('createdCurveUsesRecommendedDetailAndIsUnsavedAfterSuccessfulLoad', async () => {
+  vi.stubGlobal('Worker', undefined);
+  const store = new StudioStore();
+  vi.spyOn(store.repository, 'draft').mockResolvedValue();
+  const next = createProject(
+    2,
+    {
+      kind: 'curve2d',
+      points: [
+        [0, 0],
+        [1, 0],
+        [1, 1],
+        [0, 1],
+      ],
+      closure: 'return',
+    },
+    'Texto',
+  );
+  expect(await store.load(next, { recommend: true })).toBe(true);
+  expect(store.project().id).toBe(next.id);
+  expect(store.reconstruction).not.toBeNull();
+  expect(store.project().analysis.count).toBe(store.recommendedCount());
+  expect(store.dirty()).toBe(true);
+  store.dispose();
+});
+
+it('supersededLoadCannotReportSuccessOrRestoreOverTheLatestLoadOfSameId', async () => {
+  const store = new StudioStore();
+  let release!: () => void;
+  vi.spyOn(store, 'analyze')
+    .mockImplementationOnce(
+      () =>
+        new Promise<void>((resolve) => {
+          release = resolve;
+        }),
+    )
+    .mockImplementationOnce(async () => {
+      store.reconstruction = {
+        dimension: 2,
+        count: 3,
+        coordinates: new Float64Array([0, 0, 1, 0, 1, 1]),
+      };
+    });
+  const project = createProject(2, {
+    kind: 'curve2d',
+    points: [
+      [0, 0],
+      [1, 0],
+      [1, 1],
+    ],
+    closure: 'return',
+  });
+  const first = store.load(project);
+  expect(await store.load(project)).toBe(true);
+  const reconstruction = store.reconstruction;
+  release();
+  expect(await first).toBe(false);
+  expect(store.project().id).toBe(project.id);
+  expect(store.reconstruction).toBe(reconstruction);
+  store.dispose();
+});
+
+it('recoveredDraftRemainsUnsavedUntilExplicitSave', async () => {
+  vi.stubGlobal('Worker', undefined);
+  const store = new StudioStore();
+  vi.spyOn(store.repository, 'save').mockResolvedValue();
+  const draft = store.snapshot();
+  draft.name = 'Recuperado';
+  store.recovery.set(draft);
+  expect(await store.load(draft, { unsaved: true })).toBe(true);
+  expect(store.dirty()).toBe(true);
+  expect(store.project().name).toBe('Recuperado');
+  await store.save();
+  expect(store.dirty()).toBe(false);
+  expect(store.recovery()).toBeNull();
+  store.dispose();
+});

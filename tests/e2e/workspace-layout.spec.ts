@@ -2,16 +2,17 @@ import { test, expect } from '@playwright/test';
 import AxeBuilder from '@axe-core/playwright';
 import { readFile } from 'node:fs/promises';
 
-test('touchWorkspaceKeepsPanelsAndCameraUsable', async ({ browser }, info) => {
+test('touchWorkspaceKeepsPanelsAndCameraUsable', async ({ browser, baseURL }, info) => {
   test.skip(info.project.name !== 'chromium', 'Touch device emulation uses Chromium');
   const context = await browser.newContext({
+    baseURL,
     viewport: { width: 360, height: 800 },
     isMobile: true,
     hasTouch: true,
   });
   try {
     const page = await context.newPage();
-    await page.goto('http://127.0.0.1:4200/studio/2d');
+    await page.goto('/studio/2d');
     await expect(page.locator('canvas[data-ready]')).toHaveAttribute('data-ready', 'true');
     expect(await page.evaluate(() => navigator.maxTouchPoints)).toBeGreaterThan(0);
     const inspector = page.getByRole('button', { name: 'Mostrar u ocultar inspector' });

@@ -162,3 +162,7 @@ La selección de términos se agrupa en intervalos de 80 ms y usa un estado de c
 Los dibujos libres usan 2048 muestras y reciben una cantidad de términos según el espectro: error RMS normalizado menor o igual a 0.0015 y suma de radios omitidos menor o igual a 0.02. El usuario conserva el ajuste manual y puede volver a la recomendación. La cuenta depende de la geometría, no de un 64 fijo ni del número bruto de eventos del ratón.
 
 Editar trazo permite deformar suavemente puntos cercanos y añadir trazos con el lápiz. Los índices de inicio de cada trazo se conservan opcionalmente en V2; V1 omite esa información y el modo de color. El modo RGB colorea la reconstrucción y las órbitas según la fase; PNG/video capturan ese color, SVG conserva el color base. La exportación usa líneas más contrastadas, grosor ajustable y Line2/LineSegments2 en 3D. Los estilos de base y las adaptaciones del estudio se separan en dos archivos manteniendo su cascada y los presupuestos originales.
+
+## Creador de recorridos
+
+La ampliación «Crear desde…» se organiza en generadores puros, procesamiento de imágenes en Worker, adaptadores de archivos y un componente standalone diferido. Véanse [funciones y límites](creation.md) y [decisiones](creation-design.md). Se activaron `strict` y `strictTemplates`; se sustituyeron los escapes `$any` de las plantillas por referencias nativas tipadas y validadores de opciones. La carga transaccional restaura la geometría anterior si falla el análisis de una creación nueva.

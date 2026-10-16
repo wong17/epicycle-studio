@@ -1,6 +1,6 @@
 # Epicycle Studio — Pendientes
 
-Actualizado: 2026-10-14, America/Guatemala.
+Actualizado: 2026-10-16, America/Guatemala.
 
 El producto 2D/3D está implementado localmente. Se retiraron del plan las etapas de construcción completadas; las decisiones y evidencias se conservan en [implementación](docs/implementation.md), [verificación](docs/verification.md) y [convenciones matemáticas](docs/math-conventions.md). Un build local no acredita publicación ni hardware físico.
 
@@ -10,8 +10,6 @@ El producto 2D/3D está implementado localmente. Se retiraron del plan las etapa
 - [ ] Medir máximos sostenidos N=2048 en los tres motores, tareas largas y memoria heap/GPU; las mediciones cortas existentes no acreditan estos casos.
 - [ ] Probar Android e iOS/Safari físicos, lápiz, lector de pantalla y zoom real al 200 %. Registrar dispositivo, navegador y resultados.
 - [ ] Medir rendimiento y batería en móvil real. Mantener explícita la brecha mientras no se disponga de él.
-- [ ] Reducir el CSS del shell al presupuesto de aviso sin ampliar el límite ni degradar la interfaz.
-- [ ] Completar la configuración estricta prometida por el plan original: activar `strict` en TypeScript y `strictTemplates` en Angular, corregir diagnósticos y repetir la verificación. Los flags actuales parciales no equivalen a ambos modos completos.
 
 ## T11/T19 — Publicación en Cloudflare Pages
 

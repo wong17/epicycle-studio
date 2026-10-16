@@ -1,3 +1,5 @@
+import { CreateDrawing } from '../creation/create-drawing';
+import type { DrawingDraft } from '../../domain/creation/types';
 import { CaptureOptions } from './capture-options';
 import { CaptureSettings, captureSize, createCaptureScene, defaultCapture } from './capture-scene';
 import { OptionStrip } from './option-strip';
@@ -15,7 +17,7 @@ import {
 import { FormsModule } from '@angular/forms';
 import { DecimalPipe } from '@angular/common';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
-import { StudioStore } from './studio-store';
+import { StudioStore, ProjectLoadOptions } from './studio-store';
 import { CanvasRenderer } from '../drawing-2d/canvas-renderer';
 import {
   Project,
@@ -34,8 +36,6 @@ import {
   encodeShare,
   decodeShare,
   capturePng,
-  inspectSvg,
-  sampleSvg,
 } from '../../infrastructure/transfer/transfer';
 @Component({
   selector: 'app-studio-shell',
@@ -48,6 +48,7 @@ import {
     MathPanel,
     OptionStrip,
     CaptureOptions,
+    CreateDrawing,
   ],
   templateUrl: './studio-shell.html',
   styleUrls: ['./studio-shell.scss', './studio-responsive.scss'],
@@ -56,6 +57,18 @@ export class StudioShell implements AfterViewInit, OnDestroy {
   readonly store = inject(StudioStore);
   readonly inspectorOpen = this.store.inspectorOpen;
   readonly exportOpen = signal(false);
+  readonly creationOpen = signal(false);
+  readonly creationError = signal('');
+  readonly creationSubmitting = signal(false);
+  readonly creationMode = signal<'gallery' | 'svg'>('gallery');
+  readonly creationSvg = signal('');
+  readonly creationName = signal('Ilustración SVG');
+  openCreator(): void {
+    this.creationError.set('');
+    this.creationMode.set('gallery');
+    this.creationSvg.set('');
+    this.creationOpen.set(true);
+  }
   readonly transportOpen = signal(true);
   readonly toolsOpen = signal(true);
   private nameTimer: ReturnType<typeof setTimeout> | null = null;
@@ -107,7 +120,6 @@ export class StudioShell implements AfterViewInit, OnDestroy {
   private editDrag: { start: Vec2; original: Vec2[][]; stroke: number; point: number } | null =
     null;
   readonly share = signal('');
-  readonly svgPaths = signal<{ name: string; d: string }[]>([]);
   depth = 0;
   pngScale = 1;
   imageCapture = defaultCapture();
@@ -164,7 +176,6 @@ export class StudioShell implements AfterViewInit, OnDestroy {
       if (generation === this.captureGeneration) this.captureBusy.set(false);
     }
   }
-  svgClosure: 'segment' | 'return' = 'segment';
   liftAmplitude = 0.25;
   liftFrequency = 3;
   liftPhase = 0;
@@ -723,9 +734,12 @@ export class StudioShell implements AfterViewInit, OnDestroy {
       p.appearance.colorMode = value === 'spectrum' ? 'spectrum' : 'solid';
     }, false);
   }
-  setLayer(key: keyof Project['appearance'], value: boolean): void {
+  setLayer(
+    key: 'original' | 'reconstruction' | 'trace' | 'circles' | 'vectors' | 'grid' | 'sculpture',
+    value: boolean,
+  ): void {
     this.store.edit((p) => {
-      (p.appearance as unknown as Record<string, unknown>)[key] = value;
+      p.appearance[key] = value;
     }, false);
   }
   setPreset(id: string): void {
@@ -759,7 +773,7 @@ export class StudioShell implements AfterViewInit, OnDestroy {
     this.modal.set('');
     this.trigger?.focus();
   }
-  async openProject(p: Project, copy = false): Promise<void> {
+  async openProject(p: Project, options: ProjectLoadOptions = {}): Promise<boolean> {
     this.cancelDrawing();
     this.captureView();
     this.close();
@@ -770,15 +784,54 @@ export class StudioShell implements AfterViewInit, OnDestroy {
         this.store.notice.set(
           'Descarga el proyecto actual antes de abrir otro: no se pudo conservar el borrador.',
         );
-        return;
+        return false;
       }
-    await this.store.load(p, copy);
+    if (!(await this.store.load(p, options))) return false;
     if (p.dimension !== this.dimension)
       await this.router.navigate(['/studio', p.dimension === 2 ? '2d' : '3d']);
     else {
       this.fitted = false;
       this.fit();
       this.restoreView();
+    }
+    return true;
+  }
+  async createFrom(draft: DrawingDraft): Promise<void> {
+    if (this.creationSubmitting()) return;
+    this.creationSubmitting.set(true);
+    this.creationError.set('');
+    try {
+      if (this.drawing() && this.pending() && !(await this.finishDrawing())) {
+        this.creationError.set(
+          this.store.notice() || 'Termina o cancela el trazo antes de abrir otra creación.',
+        );
+        return;
+      }
+      const project = createProject(
+        2,
+        {
+          kind: 'curve2d',
+          points: draft.strokes.flatMap((stroke) =>
+            stroke.map(([x, y]): [number, number] => [x, y]),
+          ),
+          closure: draft.closure,
+        },
+        draft.name.slice(0, 80),
+      );
+      project.analysis.sampleCount = typeof Worker === 'undefined' ? 256 : 2048;
+      if (!(await this.openProject(project, { recommend: true, unsaved: true }))) {
+        this.creationError.set(
+          this.store.notice() || 'No se pudo abrir la curva. Tu creación anterior se conserva.',
+        );
+        return;
+      }
+      this.creationOpen.set(false);
+      this.store.seek(0);
+      if (!this.store.playing()) this.store.togglePlay();
+    } catch (error) {
+      this.creationError.set(explainError(error));
+    } finally {
+      this.creationSubmitting.set(false);
     }
   }
   removeProject(p: Project): void {
@@ -899,8 +952,11 @@ export class StudioShell implements AfterViewInit, OnDestroy {
       if (file.size > 1048576) throw new Error('Archivo demasiado grande: máximo 1 MiB');
       const text = await file.text();
       if (file.name.toLowerCase().endsWith('.svg') || file.type === 'image/svg+xml') {
-        this.svgPaths.set(inspectSvg(text));
-        this.open('svg');
+        this.creationMode.set('svg');
+        this.creationSvg.set(text);
+        this.creationName.set(file.name.replace(/\.svg$/i, ''));
+        this.exportOpen.set(false);
+        this.creationOpen.set(true);
       } else {
         this.preview.set(parseProject(text));
         this.open('import');
@@ -909,21 +965,6 @@ export class StudioShell implements AfterViewInit, OnDestroy {
       this.error(error);
     }
     input.value = '';
-  }
-  importPath(index: number): void {
-    try {
-      const points = sampleSvg(this.svgPaths()[index].d);
-      this.preview.set(
-        createProject(
-          2,
-          { kind: 'curve2d', points: points.map((p) => [...p]), closure: this.svgClosure },
-          this.svgPaths()[index].name,
-        ),
-      );
-      this.modal.set('import');
-    } catch (error) {
-      this.error(error);
-    }
   }
   lift(): void {
     this.updateLift();
@@ -1038,17 +1079,31 @@ export class StudioShell implements AfterViewInit, OnDestroy {
       )
       .join(' ');
   }
+  readonly recoveryBusy = signal(false);
   async recover(): Promise<void> {
-    const p = this.store.recovery();
-    if (p) {
-      await this.openProject(p);
-      this.store.recovery.set(null);
+    const draft = this.store.recovery();
+    if (!draft || this.recoveryBusy()) return;
+    this.recoveryBusy.set(true);
+    try {
+      if (await this.openProject(draft, { unsaved: true })) this.store.recovery.set(null);
+    } catch (error) {
+      this.error(error);
+    } finally {
+      this.recoveryBusy.set(false);
     }
   }
   async discardRecovery(): Promise<void> {
-    const p = this.store.recovery();
-    if (p) await this.store.repository.discardDraft(p.id);
-    this.store.recovery.set(null);
+    const draft = this.store.recovery();
+    if (!draft || this.recoveryBusy()) return;
+    this.recoveryBusy.set(true);
+    try {
+      await this.store.repository.discardDraft(draft.id);
+      this.store.recovery.set(null);
+    } catch (error) {
+      this.error(error);
+    } finally {
+      this.recoveryBusy.set(false);
+    }
   }
   private error(error: unknown): void {
     this.store.notice.set(explainError(error));

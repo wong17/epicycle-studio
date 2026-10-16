@@ -62,3 +62,7 @@ Para reconstruir: `npm ci` y `npm run build`. Para integración Git en Pages: co
 El dibujo libre ajusta automáticamente la cantidad de epiciclos según el detalle. **Editar trazo** permite arrastrar zonas de una curva existente o del borrador actual y continuar con el lápiz; cancelar conserva el documento anterior. En **Lo que ves → Color del trazo** puedes activar **RGB animado**.
 
 El exportador tiene vista previa y opciones independientes para imagen/video: fondo oscuro por defecto, cuadrícula, zoom, grosor y encuadre horizontal, cuadrado o vertical. PNG y video incluyen RGB; SVG conserva el color base. El video se encuentra debajo de las acciones de imagen y proyecto. Los ajustes de exportación no alteran la vista del editor.
+
+## Crear desde…
+
+El botón **+** permite animar ilustraciones de galería, nombres/frases, contornos SVG seleccionables o fotografías convertidas localmente a líneas. Consulta [opciones, límites y arquitectura](docs/creation.md). No requiere servicios de IA.

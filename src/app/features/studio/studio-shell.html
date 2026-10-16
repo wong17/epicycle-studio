@@ -5,6 +5,20 @@
   [class.math-open]="store.mathOpen()"
   [class.has-notice]="store.notice() || store.recovery()"
 >
+  @if (creationOpen()) {
+    @defer (on immediate) {
+      <studio-create-drawing
+        [returnFocus]="creationTrigger"
+        [operationError]="creationError()"
+        [submitting]="creationSubmitting()"
+        [initialMode]="creationMode()"
+        [initialSvg]="creationSvg()"
+        [initialName]="creationName()"
+        (created)="createFrom($event)"
+        (dismissed)="creationOpen.set(false)"
+      />
+    }
+  }
   <header class="topbar">
     <a
       class="brand"
@@ -21,15 +35,16 @@
       <div>
         <h1 [attr.aria-label]="project.name">
           <input
+            #projectName
             class="project-name"
             aria-label="Nombre del proyecto"
             title="Haz clic para cambiar el nombre"
             maxlength="80"
             [attr.size]="project.name.length > 26 ? 26 : project.name.length + 1"
             [value]="project.name"
-            (input)="queueRename($any($event.target).value)"
-            (blur)="rename($any($event.target).value); $any($event.target).value = project.name"
-            (keydown.enter)="$any($event.target).blur()"
+            (input)="queueRename(projectName.value)"
+            (blur)="rename(projectName.value); projectName.value = project.name"
+            (keydown.enter)="projectName.blur()"
           />
         </h1>
       </div>
@@ -62,6 +77,17 @@
       </button>
     </nav>
     <div class="header-actions">
+      <button
+        #creationTrigger
+        (click)="openCreator()"
+        class="icon-button"
+        title="Crear desde…"
+        data-tooltip="Crear desde…"
+        aria-label="Crear desde…"
+      >
+        <studio-icon name="plus" />
+      </button>
+
       <a routerLink="/learn" class="learn-link" title="Cómo funciona" aria-label="Cómo funciona"
         ><studio-icon name="help" /></a
       ><button
@@ -135,8 +161,10 @@
   @if (store.recovery() && !store.notice()) {
     <div class="notice" role="region" aria-label="Recuperar borrador">
       <span>Borrador disponible: {{ store.recovery()?.name }}</span
-      ><button (click)="recover()">Recuperar</button
-      ><button (click)="discardRecovery()">Descartar</button>
+      ><button [disabled]="recoveryBusy() || store.busy()" (click)="recover()">Recuperar</button
+      ><button [disabled]="recoveryBusy() || store.busy()" (click)="discardRecovery()">
+        Descartar
+      </button>
     </div>
   }
   <section
@@ -213,7 +241,7 @@
         </button>
       }
     </div>
-    <details (toggle)="$any($event.target).open && configureCapture('image')">
+    <details #captureSection1 (toggle)="captureSection1.open && configureCapture('image')">
       <summary>Opciones de imagen PNG / SVG</summary>
       <studio-capture-options
         [settings]="imageCapture"
@@ -274,12 +302,13 @@
           <summary>Calidad de la escultura</summary>
           <label
             >Radio del tubo normalizado<input
+              #typedControl1
               type="number"
               min="0.002"
               max="0.1"
               step="0.002"
               [value]="project.appearance.tubeRadius"
-              (change)="store.edit(patchRadius(+$any($event.target).value), false)" /></label
+              (change)="store.edit(patchRadius(+typedControl1.value), false)" /></label
           ><studio-options
             label="Tolerancia de línea central"
             [options]="[
@@ -354,7 +383,7 @@
         <studio-icon name="video" /><span class="video-label">Exportar video</span>
       </button>
     }
-    <details (toggle)="$any($event.target).open && configureCapture('video')">
+    <details #captureSection2 (toggle)="captureSection2.open && configureCapture('video')">
       <summary>Opciones de video</summary>
       <studio-capture-options
         [settings]="videoCapture"
@@ -661,13 +690,14 @@
             >{{ store.playing() ? 'En reproducción' : 'En pausa'
             }}<span>{{ store.phase() * 100 | number: '1.0-0' }} %</span></label
           ><input
+            #typedControl2
             id="phase"
             type="range"
             min="0"
             max="0.9999"
             step="0.001"
             [value]="store.phase()"
-            (input)="store.seek(+$any($event.target).value)"
+            (input)="store.seek(+typedControl2.value)"
             aria-label="Posición en el ciclo"
           />
         </div>
@@ -790,6 +820,7 @@
               >{{ dimension === 2 ? 'Epiciclos' : 'Armónicos'
               }}<strong>{{ project.analysis.count }}</strong></label
             ><input
+              #typedControl3
               id="components"
               [disabled]="store.busy()"
               [attr.aria-busy]="store.selecting()"
@@ -804,7 +835,7 @@
                   : project.analysis.sampleCount / 2
               "
               [value]="project.analysis.count"
-              (input)="store.setCount(+$any($event.target).value)"
+              (input)="store.setCount(+typedControl3.value)"
             />
             @if (dimension === 2) {
               <button
@@ -902,10 +933,11 @@
                 <label
                   >Centro {{ ['X', 'Y', 'Z'][axis]
                   }}<input
+                    #typedControl4
                     type="number"
                     step="0.1"
                     [value]="value"
-                    (change)="store.offsetField(axis, +$any($event.target).value)"
+                    (change)="store.offsetField(axis, +typedControl4.value)"
                 /></label>
               }
             </div>
@@ -920,10 +952,11 @@
                         <label
                           >Normal {{ ['X', 'Y', 'Z'][axis]
                           }}<input
+                            #typedControl5
                             type="number"
                             step="0.1"
                             [value]="value"
-                            (change)="orientCircle(i, axis, +$any($event.target).value)"
+                            (change)="orientCircle(i, axis, +typedControl5.value)"
                         /></label>
                       }
                     </div>
@@ -932,24 +965,25 @@
                 <div class="numeric-row">
                   <label
                     >Radio<input
+                      #typedControl6
                       type="number"
                       min="0"
                       max="2"
                       step="0.05"
                       [value]="circle.radius"
-                      (change)="store.editCircle(i, 'radius', +$any($event.target).value)" /></label
+                      (change)="store.editCircle(i, 'radius', +typedControl6.value)" /></label
                   ><label
                     >Frecuencia<input
+                      #typedControl7
                       type="number"
                       min="-128"
                       max="128"
                       step="1"
                       [value]="circle.frequency"
-                      (change)="
-                        store.editCircle(i, 'frequency', +$any($event.target).value)
-                      " /></label
+                      (change)="store.editCircle(i, 'frequency', +typedControl7.value)" /></label
                   ><label
                     >Fase °<input
+                      #typedControl8
                       type="number"
                       min="0"
                       max="360"
@@ -959,7 +993,7 @@
                         store.editCircle(
                           i,
                           'phase',
-                          (+$any($event.target).value * 3.141592653589793) / 180
+                          (+typedControl8.value * 3.141592653589793) / 180
                         )
                       "
                   /></label>
@@ -1061,9 +1095,10 @@
                 <summary>Editar {{ controlPoints.length }} puntos de control</summary>
                 <label
                   ><input
+                    #typedControl9
                     type="checkbox"
                     [checked]="cyclic"
-                    (change)="store.edit(patchCyclic($any($event.target).checked))"
+                    (change)="store.edit(patchCyclic(typedControl9.checked))"
                   />Spline cíclico</label
                 >
                 <studio-options
@@ -1099,11 +1134,12 @@
                     <span>{{ i + 1 }}</span>
                     @for (value of point; track $index; let axis = $index) {
                       <input
+                        #typedControl10
                         type="number"
                         step="0.1"
                         [value]="value"
                         [attr.aria-label]="'Punto ' + (i + 1) + ' ' + ['X', 'Y', 'Z'][axis]"
-                        (change)="pointField(i, axis, +$any($event.target).value)"
+                        (change)="pointField(i, axis, +typedControl10.value)"
                       />
                     }
                     <button
@@ -1132,53 +1168,60 @@
           <div class="layers">
             <label
               ><input
+                #typedControl11
                 type="checkbox"
                 [checked]="project.appearance.circles"
-                (change)="setLayer('circles', $any($event.target).checked)"
+                (change)="setLayer('circles', typedControl11.checked)"
               />
               Órbitas</label
             ><label
               ><input
+                #typedControl12
                 type="checkbox"
                 [checked]="project.appearance.vectors"
-                (change)="setLayer('vectors', $any($event.target).checked)"
+                (change)="setLayer('vectors', typedControl12.checked)"
               />
               Vectores</label
             ><label
               ><input
+                #typedControl13
                 type="checkbox"
                 [checked]="project.appearance.original"
-                (change)="setLayer('original', $any($event.target).checked)"
+                (change)="setLayer('original', typedControl13.checked)"
               />
               Original</label
             ><label
               ><input
+                #typedControl14
                 type="checkbox"
                 [checked]="project.appearance.reconstruction"
-                (change)="setLayer('reconstruction', $any($event.target).checked)"
+                (change)="setLayer('reconstruction', typedControl14.checked)"
               />
               Curva completa</label
             ><label
               ><input
+                #typedControl15
                 type="checkbox"
                 [checked]="project.appearance.trace"
-                (change)="setLayer('trace', $any($event.target).checked)"
+                (change)="setLayer('trace', typedControl15.checked)"
               />
               Trazo progresivo</label
             ><label
               ><input
+                #typedControl16
                 type="checkbox"
                 [checked]="project.appearance.grid"
-                (change)="setLayer('grid', $any($event.target).checked)"
+                (change)="setLayer('grid', typedControl16.checked)"
               />
               Cuadrícula</label
             >
             @if (dimension === 3) {
               <label
                 ><input
+                  #typedControl17
                   type="checkbox"
                   [checked]="project.appearance.sculpture"
-                  (change)="setLayer('sculpture', $any($event.target).checked)"
+                  (change)="setLayer('sculpture', typedControl17.checked)"
                 />
                 Escultura tubular</label
               >
@@ -1237,7 +1280,7 @@
             >
           </div>
           <button (click)="openProject(p)">Abrir</button
-          ><button (click)="openProject(p, true)">Duplicar</button
+          ><button (click)="openProject(p, { asCopy: true })">Duplicar</button
           ><button (click)="removeProject(p)" [attr.aria-label]="'Eliminar ' + p.name">×</button>
         </div>
       } @empty {
@@ -1300,7 +1343,7 @@
           como polilínea para conservar la aproximación medida.
         </p>
       }
-      <button class="primary full" (click)="preview() && openProject(preview()!, true)">
+      <button class="primary full" (click)="preview() && openProject(preview()!, { asCopy: true })">
         Abrir como copia
       </button>
     }
@@ -1312,25 +1355,13 @@
     @if (modal() === 'share') {
       <h2 id="dialog-title">Compartir creación</h2>
       <label
-        >Copia este enlace<input [value]="share()" readonly (focus)="$any($event.target).select()"
+        >Copia este enlace<input
+          #typedControl18
+          [value]="share()"
+          readonly
+          (focus)="typedControl18.select()"
       /></label>
       <p>Cualquier persona que tenga el enlace puede abrir la creación.</p>
-    }
-    @if (modal() === 'svg') {
-      <h2 id="dialog-title">Elegir trayectoria SVG</h2>
-      <p>Selecciona una trayectoria. Los contornos se importan por separado.</p>
-      <studio-options
-        label="Cierre de una trayectoria abierta"
-        [options]="[
-          { value: 'segment', label: 'Conectar extremos con un segmento', icon: 'close-path' },
-          { value: 'return', label: 'Regresar por el mismo recorrido', icon: 'return-path' },
-        ]"
-        [value]="svgClosure"
-        (valueChange)="svgClosure = $any($event)"
-      />
-      @for (path of svgPaths(); track $index; let i = $index) {
-        <button class="full" (click)="importPath(i)">{{ path.name }}</button>
-      }
     }
   </dialog>
 </div>

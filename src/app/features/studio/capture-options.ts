@@ -9,13 +9,14 @@ import { CaptureSettings } from './capture-scene';
       label="Fondo de exportación"
       [options]="video() ? backgrounds : transparentBackgrounds"
       [value]="settings().background"
-      (valueChange)="update({ background: $any($event) })"
+      (valueChange)="setBackground($event)"
     />
     <label class="grid-option"
       ><input
+        #typedControl1
         type="checkbox"
         [checked]="settings().grid"
-        (change)="update({ grid: $any($event.target).checked })"
+        (change)="update({ grid: typedControl1.checked })"
       />Incluir cuadrícula</label
     >
     <studio-options
@@ -26,7 +27,7 @@ import { CaptureSettings } from './capture-scene';
         { value: 'portrait', label: 'Vertical 9:16', icon: 'portrait' },
       ]"
       [value]="settings().aspect"
-      (valueChange)="update({ aspect: $any($event) })"
+      (valueChange)="setAspect($event)"
     />
     <studio-options
       label="Encuadre"
@@ -35,30 +36,32 @@ import { CaptureSettings } from './capture-scene';
         { value: 'current', label: 'Usar vista actual del editor', icon: 'camera' },
       ]"
       [value]="settings().framing"
-      (valueChange)="update({ framing: $any($event) })"
+      (valueChange)="setFraming($event)"
     />
     <label class="zoom-label"
       >Zoom de exportación <span aria-hidden="true">{{ settings().zoom }}×</span>
       <input
+        #typedControl2
         type="range"
         aria-label="Zoom de exportación"
         min="0.25"
         max="3"
         step="0.05"
         [value]="settings().zoom"
-        (change)="update({ zoom: +$any($event.target).value })"
+        (change)="update({ zoom: +typedControl2.value })"
       />
     </label>
     <label class="zoom-label"
       >Grosor de líneas <span aria-hidden="true">{{ settings().lineWeight }}×</span>
       <input
+        #typedControl3
         type="range"
         aria-label="Grosor de líneas"
         min="1"
         max="3"
         step="0.25"
         [value]="settings().lineWeight"
-        (change)="update({ lineWeight: +$any($event.target).value })"
+        (change)="update({ lineWeight: +typedControl3.value })"
       />
     </label>
   `,
@@ -108,6 +111,17 @@ export class CaptureOptions {
     ...this.backgrounds,
     { value: 'transparent', label: 'Transparente', icon: 'transparency' },
   ];
+  setBackground(value: string): void {
+    if (value === 'dark' || value === 'black' || (value === 'transparent' && !this.video()))
+      this.update({ background: value });
+  }
+  setAspect(value: string): void {
+    if (value === 'landscape' || value === 'square' || value === 'portrait')
+      this.update({ aspect: value });
+  }
+  setFraming(value: string): void {
+    if (value === 'fit' || value === 'current') this.update({ framing: value });
+  }
   update(patch: Partial<CaptureSettings>): void {
     this.settingsChange.emit({ ...this.settings(), ...patch });
   }

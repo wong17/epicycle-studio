@@ -16,20 +16,22 @@ import { evaluate2D, TAU } from '../../domain/fourier/math';
     ><label
       >Radio del segundo círculo · {{ radius()
       }}<input
+        #typedControl1
         type="range"
         min="0"
         max="0.6"
         step="0.01"
         [value]="radius()"
-        (input)="radius.set(+$any($event.target).value); draw()" /></label
+        (input)="radius.set(+typedControl1.value); draw()" /></label
     ><label
       >Frecuencia · {{ frequency() }} vueltas/ciclo<input
+        #typedControl2
         type="range"
         min="1"
         max="8"
         step="1"
         [value]="frequency()"
-        (input)="frequency.set(+$any($event.target).value); draw()"
+        (input)="frequency.set(+typedControl2.value); draw()"
     /></label>
     <div class="lessons">
       <article>

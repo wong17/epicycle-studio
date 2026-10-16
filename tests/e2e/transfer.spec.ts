@@ -30,13 +30,13 @@ test('exportedSvgImportsAndKeepsSourceOrientation', async ({ page }) => {
     mimeType: file.suggestedFilename().endsWith('.svg') ? 'image/svg+xml' : 'application/json',
     buffer: await readFile((await file.path())!),
   });
-  await page.getByRole('button', { name: 'Trayectoria 1', exact: true }).click();
+  const creator = page.getByRole('dialog', { name: 'Crear desde…', exact: true });
   await expect(
-    page.getByRole('img', { name: 'Vista previa de la geometría, proyección XY' }),
+    creator.getByRole('img', { name: 'Vista previa del recorrido continuo' }),
   ).toBeVisible();
-  await page.getByRole('button', { name: 'Abrir como copia', exact: true }).click();
-  await expect(page.getByRole('heading', { name: /Trayectoria 1/ })).toBeVisible();
-  await expect(page.getByRole('button', { name: 'Reproducir', exact: true })).toBeEnabled();
+  await expect(creator.getByRole('checkbox')).toHaveCount(1);
+  await creator.getByRole('button', { name: 'Crear y animar' }).click();
+  await expect(page.getByRole('button', { name: 'Pausar', exact: true })).toBeVisible();
   const output = page.waitForEvent('download');
   if (
     !(
@@ -49,7 +49,8 @@ test('exportedSvgImportsAndKeepsSourceOrientation', async ({ page }) => {
   await page.getByRole('button', { name: 'Proyecto JSON', exact: true }).click();
   const exported = await output,
     p = JSON.parse(await readFile((await exported.path())!, 'utf8'));
-  expect(p.source.points.length).toBe(1024);
+  expect(p.source.points.length).toBeGreaterThanOrEqual(1024);
+  expect(p.source.points.length).toBeLessThanOrEqual(4096);
   expect(Math.max(...p.source.points.map((point: number[]) => point[1]))).toBeGreaterThan(0.5);
   expect(Math.min(...p.source.points.map((point: number[]) => point[1]))).toBeLessThan(-0.8);
 });

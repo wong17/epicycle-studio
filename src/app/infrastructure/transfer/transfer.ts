@@ -44,10 +44,10 @@ export function exportSvg(
   const backdrop =
     options.background === 'transparent'
       ? ''
-      : `<rect x="${frame[0]}" y="${frame[1]}" width="${frame[2]}" height="${frame[3]}" fill="${background}"/>`;
+      : `<rect data-epicycle-layer="background" x="${frame[0]}" y="${frame[1]}" width="${frame[2]}" height="${frame[3]}" fill="${background}"/>`;
   const step = (frame[2] * 32) / (options.pixels ?? 800);
   const grid = options.grid
-    ? `<g stroke="#252525" stroke-width="${step / 32}">${[
+    ? `<g data-epicycle-layer="grid" stroke="#252525" stroke-width="${step / 32}">${[
         ...Array.from(
           { length: Math.ceil(frame[2] / step) + 1 },
           (_, i) =>

@@ -1,0 +1,281 @@
+<dialog
+  #dialog
+  class="creation-dialog"
+  aria-labelledby="creation-title"
+  (cancel)="$event.preventDefault(); dismiss()"
+>
+  <header class="creation-header">
+    <div>
+      <span class="eyebrow">UN PUNTO DE PARTIDA</span>
+      <h2 id="creation-title">Crear desde…</h2>
+    </div>
+    <button
+      type="button"
+      class="quiet icon-button"
+      (click)="dismiss()"
+      [disabled]="submitting()"
+      aria-label="Cerrar creador"
+      title="Cerrar creador"
+      data-tooltip="Cerrar creador"
+      data-tooltip-align="end"
+    >
+      <studio-icon name="close" />
+    </button>
+  </header>
+  <nav class="creation-tabs" aria-label="Origen del dibujo">
+    @for (tab of modes; track tab.id) {
+      <button
+        type="button"
+        [class.active]="mode() === tab.id"
+        [attr.aria-pressed]="mode() === tab.id"
+        (click)="setMode(tab.id)"
+        [disabled]="submitting()"
+        [title]="tab.label"
+      >
+        <studio-icon [name]="tab.icon" /><span>{{ tab.label }}</span>
+      </button>
+    }
+  </nav>
+  <div class="creation-body" [attr.inert]="submitting() ? '' : null">
+    <section class="creation-source" aria-label="Configurar dibujo">
+      @switch (mode()) {
+        @case ('gallery') {
+          <h3>Elige algo que te inspire</h3>
+          <div class="gallery-categories" role="group" aria-label="Filtrar galería">
+            @for (item of categories; track item.id) {
+              <button
+                type="button"
+                [class.active]="category() === item.id"
+                [attr.aria-pressed]="category() === item.id"
+                (click)="category.set(item.id)"
+              >
+                {{ item.label }}
+              </button>
+            }
+          </div>
+          <div class="creation-gallery">
+            @for (item of filteredGallery(); track item.id) {
+              <button
+                type="button"
+                class="gallery-item"
+                [class.active]="selectedGallery() === item.id"
+                [attr.aria-pressed]="selectedGallery() === item.id"
+                (click)="selectGallery(item.id)"
+                [title]="item.description"
+                [attr.aria-label]="item.name"
+              >
+                <svg viewBox="0 0 320 240" aria-hidden="true">
+                  <polyline [attr.points]="thumbnails.get(item.id)" />
+                </svg>
+                <span>{{ item.name }}</span>
+              </button>
+            }
+          </div>
+          <button type="button" class="variation-button" (click)="vary()">
+            <studio-icon name="rotate" />Otra variación
+          </button>
+        }
+        @case ('text') {
+          <h3>De palabras a una sola línea</h3>
+          <label for="creation-text">Tu nombre o mensaje</label>
+          <textarea
+            id="creation-text"
+            rows="3"
+            maxlength="80"
+            [(ngModel)]="text"
+            (ngModelChange)="generateText()"
+            placeholder="Escribe algo tuyo"
+            spellcheck="false"
+          ></textarea>
+          <p class="helper">
+            Hasta 80 caracteres. Letras de trazo simple, en mayúsculas; los acentos se simplifican.
+            También puedes usar números y saltos de línea.
+          </p>
+        }
+        @case ('svg') {
+          <h3>Tu ilustración, trazo a trazo</h3>
+          <label class="creation-upload"
+            ><studio-icon name="vector" /><strong>Cargar un SVG</strong
+            ><span>Hasta 256 KiB · sin referencias externas</span
+            ><input
+              type="file"
+              accept=".svg,image/svg+xml"
+              (change)="loadSvg($event)"
+              aria-label="Cargar SVG para crear dibujo"
+          /></label>
+          <p class="helper">
+            Selecciona los contornos que quieres animar. Los huecos entre trazos se conectarán con
+            líneas visibles.
+          </p>
+          @if (svgStrokes().length) {
+            <fieldset class="svg-strokes">
+              <legend>Contornos · {{ selectedSvg().size }} de {{ svgStrokes().length }}</legend>
+              @for (stroke of svgStrokes(); track stroke.id) {
+                <label
+                  ><input
+                    type="checkbox"
+                    [checked]="selectedSvg().has(stroke.id)"
+                    (change)="toggleSvg(stroke.id)"
+                  />{{ stroke.name }}</label
+                >
+              }
+            </fieldset>
+          }
+        }
+        @case ('photo') {
+          <h3>Una foto, otro lenguaje</h3>
+          <label class="creation-upload"
+            ><studio-icon name="image" /><strong>{{ photoName || 'Cargar una fotografía' }}</strong
+            ><span>PNG, JPEG o WebP · hasta 12 MiB · procesamiento local</span
+            ><input
+              type="file"
+              accept="image/png,image/jpeg,image/webp"
+              (change)="loadPhoto($event)"
+              aria-label="Cargar fotografía para crear dibujo"
+          /></label>
+          <div class="photo-styles" role="group" aria-label="Estilo de fotografía">
+            <button
+              type="button"
+              [class.active]="photoStyle === 'continuous'"
+              [attr.aria-pressed]="photoStyle === 'continuous'"
+              (click)="photoStyle = 'continuous'; generatePhoto()"
+            >
+              <studio-icon name="curve" /><span
+                >Línea continua<small>Sombras y retratos</small></span
+              >
+            </button>
+            <button
+              type="button"
+              [class.active]="photoStyle === 'contours'"
+              [attr.aria-pressed]="photoStyle === 'contours'"
+              (click)="photoStyle = 'contours'; generatePhoto()"
+            >
+              <studio-icon name="vector" /><span
+                >Contornos<small>Siluetas e ilustraciones</small></span
+              >
+            </button>
+          </div>
+          <label class="range-label" for="photo-detail"
+            >Detalle <output>{{ photoDetail }} / 5</output></label
+          ><input
+            id="photo-detail"
+            type="range"
+            min="1"
+            max="5"
+            step="1"
+            [(ngModel)]="photoDetail"
+            (change)="generatePhoto()"
+          />
+          <label class="range-label" for="photo-contrast"
+            >Contraste <output>{{ photoContrast }}×</output></label
+          ><input
+            id="photo-contrast"
+            type="range"
+            min="0.5"
+            max="2"
+            step="0.1"
+            [(ngModel)]="photoContrast"
+            (change)="generatePhoto()"
+          />
+          <label class="invert-photo"
+            ><input type="checkbox" [(ngModel)]="photoInvert" (change)="generatePhoto()" />Invertir
+            claros y oscuros</label
+          >
+          <p class="helper">
+            Prueba retratos con fondo limpio o paisajes con contraste. La línea continua interpreta
+            las sombras; los contornos destacan los bordes.
+          </p>
+          @if (busy()) {
+            <button type="button" class="quiet" (click)="cancelProcessing()">
+              Cancelar procesamiento
+            </button>
+          }
+        }
+      }
+    </section>
+    <section class="creation-result" aria-label="Vista previa del nuevo dibujo">
+      <div class="preview-heading">
+        <span>EL RECORRIDO</span><span>{{ pointCount() }} puntos</span>
+      </div>
+      <div class="drawing-preview" [attr.aria-busy]="busy()">
+        <svg
+          viewBox="0 0 320 240"
+          role="img"
+          aria-label="Vista previa del recorrido continuo"
+          preserveAspectRatio="xMidYMid meet"
+        >
+          @if (previewPoints() && !busy()) {
+            <polyline [attr.points]="previewPoints()" />
+          }
+        </svg>
+        @if (busy()) {
+          <div class="preview-message" role="status">
+            <studio-icon name="orbit" /><span>Encontrando el recorrido…</span>
+          </div>
+        } @else if (!draft()) {
+          <div class="preview-message">
+            <studio-icon [name]="mode() === 'photo' ? 'image' : 'vector'" /><span>{{
+              mode() === 'svg'
+                ? 'Carga un SVG y elige sus contornos'
+                : mode() === 'text'
+                  ? 'Escribe para crear tu recorrido'
+                  : 'Carga una imagen para empezar'
+            }}</span>
+          </div>
+        }
+      </div>
+      @if (error() || routeResult().error) {
+        <p class="creation-error" role="alert">{{ error() || routeResult().error }}</p>
+      }
+      @if (draft(); as current) {
+        <h3>{{ current.name }}</h3>
+        <p class="helper">
+          Un recorrido continuo, listo para reconstruirse con epiciclos. Puedes editarlo después en
+          el lienzo.
+        </p>
+        @if (current.strokes.length > 1) {
+          <details class="route-options">
+            <summary>Conexión de trazos · {{ current.strokes.length }} partes</summary>
+            <div role="group" aria-label="Orden de los trazos">
+              <button
+                type="button"
+                [class.active]="order() === 'nearest'"
+                [attr.aria-pressed]="order() === 'nearest'"
+                (click)="order.set('nearest')"
+              >
+                Conexiones cortas
+              </button>
+              <button
+                type="button"
+                [class.active]="order() === 'original'"
+                [attr.aria-pressed]="order() === 'original'"
+                (click)="order.set('original')"
+              >
+                Orden original
+              </button>
+            </div>
+            <p class="helper">
+              Los enlaces entre partes también se dibujan. El recorrido vuelve sobre sí mismo al
+              terminar para cerrar el ciclo.
+            </p>
+          </details>
+        }
+      }
+    </section>
+  </div>
+  <footer class="creation-footer">
+    @if (operationError()) {
+      <p class="creation-error" role="alert">{{ operationError() }}</p>
+    } @else {
+      <p>Tu creación actual se conserva como borrador al abrir la nueva.</p>
+    }
+    <button
+      type="button"
+      class="primary"
+      [disabled]="!draft() || busy() || submitting() || pointCount() < 3"
+      (click)="confirm()"
+    >
+      <studio-icon name="play" />{{ submitting() ? 'Calculando…' : 'Crear y animar' }}
+    </button>
+  </footer>
+</dialog>

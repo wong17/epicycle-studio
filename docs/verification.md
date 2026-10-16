@@ -102,3 +102,38 @@ Actualización de posición del zoom: el inspector ocupa el borde derecho; abier
 ## Precisión y edición de dibujos
 
 `termSliderKeepsAccentControlsStableAndPlaybackRunning` registra opacidad, estado de Guardar y reproducción durante movimientos consecutivos del slider. `complexFreehandGetsAdaptiveDetailAndCanBeEditedAndColored` dibuja una curva de 19 lóbulos, comprueba selección automática superior a 64 términos, deforma sus puntos sin cambiar su cantidad y verifica RGB en el lienzo y JSON. La recomendación también tiene una comprobación matemática de las cotas de error; los proyectos anteriores siguen importándose sin los campos opcionales nuevos.
+
+## Crear desde… — 2026-10-15
+
+`npm run test:ci`: 169 pruebas unitarias aprobadas. `npm run lint`, build de producción y compilación estricta de aplicación/plantillas/Worker sin diagnósticos. No se añadieron dependencias.
+
+| Requisito                                              | Evidencia                                                                                                                                                                                            |
+| ------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Galería, variaciones y cancelar sin reemplazar         | `galleryPreviewSelectionAndCancelPreserveCurrentDrawing`                                                                                                                                             |
+| Nombres, acentos, saltos de línea y errores de texto   | `typedNameCreatesOwnAnimatedCurveAndValidatesUnsupportedText`, `textDraftNameCollapsesWhitespaceAndFitsProjectNameLimit`                                                                             |
+| Seleccionar contornos SVG y rechazar contenido activo  | `svgContoursCanBeSelectedAndUnsafeSvgDoesNotReplaceDocument`, `validatesAllMarkedLayerContentBeforeMeasuringAnyCurve`                                                                                |
+| Foto local, ambos estilos, imágenes planas y corruptas | `photoConvertsLocallyInBothStylesAndCreatesAnimation`, `photoRejectsBlankAndCorruptFilesWithoutLosingCurrentCreation`                                                                                |
+| Límites antes de decodificar y cancelación             | `photo-metadata.spec.ts`, `photo-client.spec.ts`                                                                                                                                                     |
+| Conservación ante cuota o fallo del cálculo            | `draftPreservationFailureIsVisibleAndDoesNotReplaceDirtyDocument`, `failedCreationKeepsPreviousGeometryAndShowsErrorInsideDialog`, `failedCreatedCurveRestoresPreviousDocumentGeometryAndDirtyState` |
+| Resultado obsoleto con el mismo ID                     | `supersededLoadCannotReportSuccessOrRestoreOverTheLatestLoadOfSameId`                                                                                                                                |
+| Recomendación automática y documento sin guardar       | `createdCurveUsesRecommendedDetailAndIsUnsavedAfterSuccessfulLoad`                                                                                                                                   |
+| Creación desde 3D sin perder la sesión espacial        | `creationFromSpatialOpensNew2dCopyAndPreserves3dSession`                                                                                                                                             |
+| Móvil, teclado, foco y accesibilidad                   | `creatorFitsMobileAndHasAccessibleControls`, `alignedChromeAndResponsiveInspectorKeepModePreference`, `touchWorkspaceKeepsPanelsAndCameraUsable`                                                     |
+| Reimportar SVG propio sin fondo ni cuadrícula          | `exportedSvgImportsAndKeepsSourceOrientation`, `ignoresExportedBackgroundAndGridLayersButKeepsTheCurve`                                                                                              |
+
+La ejecución completa inicial (111 escenarios) detectó cinco fallos: desbordamiento de la cabecera a 320 px en los tres motores, retorno del foco en WebKit y un test táctil que tenía el puerto fijado en vez de usar la configuración. Se corrigieron; la repetición de creación, transferencia y layout aprobó 49 escenarios y omitió dos pruebas táctiles fuera de Chromium. No quedaron fallos pendientes. En conjunto se verificaron 110 escenarios aprobados y cuatro omisiones deliberadas de la suite de 114 casos (ejecución completa más repetición de afectados y un caso nuevo de cuota). Las omisiones táctiles fuera de Chromium y la medición de referencia fuera de Chromium son deliberadas, no errores.
+
+Las fotografías se comprobaron con una figura sintética de contraste, incluyendo PNG vacío/corrupto. La fidelidad de cualquier retrato o paisaje depende de la imagen, el estilo, el detalle y el límite de muestras. Las vistas móviles de navegador no acreditan teléfonos físicos ni batería.
+
+## Recuperación de borradores — 2026-10-16
+
+El aviso indica una copia automática local sin guardar, no un error de carga. Recuperar conserva el estado **Sin guardar** hasta pulsar Guardar. Guardar o descartar elimina la copia pendiente correspondiente; no se eliminan otros documentos. Los fallos de recuperación/descartado conservan el borrador y permiten reintentar después de cerrar el aviso de error. No se ofrece una copia cuyo contenido sea idéntico al guardado sólo porque cambió su fecha.
+
+Se sustituyeron argumentos booleanos de carga por `ProjectLoadOptions` para distinguir copia, recomendación y documento recuperado sin guardar.
+
+- `npm run test:ci`: **172 pruebas aprobadas** en 21 archivos.
+- Última ejecución de `creation.spec.ts`, `draft-recovery.spec.ts` y `transfer.spec.ts`: **45/45 aprobadas** en Chromium, Firefox y WebKit.
+- `recoverSaveAndReloadDoesNotRepeatDraftNotice` y `discardAndReloadDoesNotRepeatDraftNotice`: aviso ausente tras resolver el borrador y recargar.
+- `recoveredDraftRemainsUnsavedUntilExplicitSave`: estado y limpieza tras guardado explícito.
+- `doesNotOfferTimestampOnlyCopiesOrVersionsOlderThanSaved`: filtrado de copias sin cambios y versiones antiguas.
+- Build, lint y comprobaciones estrictas sin diagnósticos de aplicación. El último ajuste tipográfico también pasó `creatorFitsMobileAndHasAccessibleControls` en WebKit.

@@ -1,3 +1,4 @@
+import { needsRecovery } from '../../domain/projects/recovery';
 import { recommendTermCount } from '../../domain/fourier/recommendation';
 import { Injectable, computed, signal } from '@angular/core';
 import {
@@ -34,6 +35,11 @@ import { WorkerClient } from '../../infrastructure/compute/worker-client';
 import { ProjectRepository } from '../../infrastructure/persistence/project-repository';
 import { PlaybackClock } from './playback-clock';
 import { History } from './history';
+export interface ProjectLoadOptions {
+  asCopy?: boolean;
+  recommend?: boolean;
+  unsaved?: boolean;
+}
 @Injectable({ providedIn: 'root' })
 export class StudioStore {
   // Workspace preferences belong to the session, not to either curve document.
@@ -121,6 +127,7 @@ export class StudioStore {
   sourceScale = 1;
   private client = new WorkerClient();
   private generation = 0;
+  private loadGeneration = 0;
   private selectionGeneration = 0;
   private draftTimer: ReturnType<typeof setTimeout> | null = null;
   private started = false;
@@ -190,7 +197,7 @@ export class StudioStore {
         const drafts = await this.repository.drafts();
         for (const draft of drafts) {
           const saved = await this.repository.get(draft.id);
-          if (!saved || draft.updatedAt > saved.updatedAt) {
+          if (needsRecovery(draft, saved)) {
             this.recovery.set(draft);
             break;
           }
@@ -377,8 +384,24 @@ export class StudioStore {
         .catch(() => this.notice.set('Cambios sin guardar. Descarga JSON para conservarlos.'));
     }, 1000);
   }
-  async load(p: Project, asCopy = false): Promise<void> {
+  async load(p: Project, options: ProjectLoadOptions = {}): Promise<boolean> {
+    const { asCopy = false, recommend = false, unsaved = false } = options;
     projectSchema.parse(p);
+    const loadGeneration = ++this.loadGeneration;
+    const previous = this.snapshot(),
+      dirty = this.dirty();
+    const render = {
+      analysis: this.analysis,
+      reference: this.reference,
+      reconstruction: this.reconstruction,
+      offset: this.offset,
+      terms: this.terms,
+      circles3: this.circles3,
+      harmonics: this.harmonics,
+      error: this.error,
+      sourceScale: this.sourceScale,
+      recommendedCount: this.recommendedCount(),
+    };
     if (this.project().dimension !== p.dimension)
       this.sessions.set(this.project().dimension, {
         project: structuredClone(this.snapshot()),
@@ -386,16 +409,49 @@ export class StudioStore {
       });
     this.pause();
     this.client.cancel();
-    this.history.clear();
     if (this.draftTimer) clearTimeout(this.draftTimer);
     this.project.set(
       asCopy ? { ...p, id: crypto.randomUUID(), name: `${p.name.slice(0, 72)} · copia` } : p,
     );
     this.clock.setSpeed(p.playback.speed);
     this.seek(p.playback.phase);
-    this.dirty.set(asCopy);
+    this.dirty.set(asCopy || recommend || unsaved);
     this.notice.set('');
-    await this.analyze();
+    const targetId = this.project().id;
+    const calculation = this.analyze(recommend);
+    const analysisGeneration = this.generation;
+    await calculation;
+    if (
+      loadGeneration !== this.loadGeneration ||
+      analysisGeneration !== this.generation ||
+      this.project().id !== targetId
+    )
+      return false;
+    if (this.reconstruction === render.reconstruction) {
+      if (this.draftTimer) clearTimeout(this.draftTimer);
+      this.draftTimer = null;
+      this.project.set(previous);
+      this.dirty.set(dirty);
+      this.clock.setSpeed(previous.playback.speed);
+      this.seek(previous.playback.phase);
+      this.analysis = render.analysis;
+      this.reference = render.reference;
+      this.reconstruction = render.reconstruction;
+      this.offset = render.offset;
+      this.terms = render.terms;
+      this.circles3 = render.circles3;
+      this.harmonics = render.harmonics;
+      this.error = render.error;
+      this.sourceScale = render.sourceScale;
+      this.recommendedCount.set(render.recommendedCount);
+      if (!this.notice())
+        this.notice.set('No se pudo calcular la nueva curva. La creación anterior se conserva.');
+      if (dirty) this.queueDraft();
+      this.revision.update((value) => value + 1);
+      return false;
+    }
+    this.history.clear();
+    return true;
   }
   async save(): Promise<void> {
     if (this.draftTimer) {
@@ -409,6 +465,7 @@ export class StudioStore {
       if (this.project() === original) {
         this.project.set(p);
         this.dirty.set(false);
+        if (this.recovery()?.id === p.id) this.recovery.set(null);
         this.notice.set('Proyecto guardado en este navegador');
       } else {
         this.queueDraft();
