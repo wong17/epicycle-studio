@@ -171,6 +171,7 @@ test('exportHoverOnlyShowsNonEmptyHintsAndDoesNotLeaveMouseFocusHints', async ({
   await expect.poll(hints).toEqual(['Actualizar vista previa']);
   const hintBounds = await refresh.evaluate((button) => {
     const style = getComputedStyle(button, '::after');
+    if (style.transform !== 'none') throw new Error('End-aligned hint must not be translated');
     const right = button.getBoundingClientRect().right - parseFloat(style.right);
     return { left: right - parseFloat(style.width), right, viewport: innerWidth };
   });

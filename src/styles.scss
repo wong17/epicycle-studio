@@ -150,7 +150,7 @@ input[type='range'] {
   opacity: 1;
   visibility: visible;
 }
-.studio .icon-button[data-tooltip-align='end']::after {
+.studio .icon-button[data-tooltip]:not([data-tooltip=''])[data-tooltip-align='end']::after {
   left: auto;
   right: 0;
   transform: none;
