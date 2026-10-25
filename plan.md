@@ -2,7 +2,7 @@
 
 Actualizado: 2026-10-16, America/Guatemala.
 
-El producto 2D/3D está implementado localmente. Se retiraron del plan las etapas de construcción completadas; las decisiones y evidencias se conservan en [implementación](docs/implementation.md), [verificación](docs/verification.md) y [convenciones matemáticas](docs/math-conventions.md). Un build local no acredita publicación ni hardware físico.
+El producto 2D/3D está implementado localmente. Se retiraron del plan las etapas de construcción completadas; las evidencias se conservan en [verificación](docs/verification.md) y [convenciones matemáticas](docs/math-conventions.md). Un build local no acredita publicación ni hardware físico.
 
 ## T18 — Rendimiento y accesibilidad pendientes
 

@@ -1,38 +1,64 @@
 # Epicycle Studio
 
-Un laboratorio gráfico para dibujar, reconstruir y componer curvas con epiciclos en 2D y 3D. Angular administra los controles; un dominio TypeScript calcula Fourier; los workers realizan análisis y muestreo; Canvas y Three.js representan los resultados. Los proyectos se guardan en este navegador.
+<p align="center">
+  <img src="docs/screenshots/hero.png" alt="Epicycle Studio reconstruyendo un colibrí con 777 epiciclos en tiempo real" width="100%">
+</p>
 
-## Ejecutar
+<p align="center">
+  <strong>Dibuja cualquier cosa. Mira cómo la reconstruyen cientos de círculos girando.</strong><br>
+  <a href="https://epicycle-studio.josuewong797.workers.dev/studio/2d">Probar en línea</a> ·
+  <a href="docs/learning.md">Guía de aprendizaje</a> ·
+  <a href="docs/math-conventions.md">Matemática</a>
+</p>
 
-Requiere Node 24.15.0 o una versión compatible con Angular 22.2.2.
+## ¿Para qué sirve?
+
+Epicycle Studio es un laboratorio gráfico que usa la **transformada de Fourier** para descomponer una curva en círculos que giran unos dentro de otros (epiciclos). Al sumarlos, la punta del último círculo recorre exactamente tu dibujo.
+
+- **Aprender:** ver de forma directa qué es una serie de Fourier, qué aporta cada frecuencia y cómo cambia el error al usar más o menos círculos.
+- **Crear:** convertir un dibujo a mano, un nombre, un SVG o una fotografía en una animación de epiciclos.
+- **Exportar:** guardar PNG, SVG, video, proyecto JSON o una escultura 3D en GLB.
+
+Todo se ejecuta en tu navegador: sin backend, sin cuentas y sin servicios de IA. Tus proyectos se guardan localmente y las fotos nunca salen de tu equipo.
+
+## Características
+
+- **2D y 3D:** curvas planas o espaciales, con cámaras, edición numérica de puntos y tubo iluminado para esculturas.
+- **Crear desde…:** galería de ilustraciones, texto (nombres y frases), SVG con varios trazos y fotografías convertidas a línea continua o contornos.
+- **Dibujo libre** con varios trazos, edición de zonas del trazo y número de epiciclos recomendado automáticamente (hasta 2048).
+- **Componer** tu propia máquina: añade círculos y edita radio, frecuencia, fase y centro.
+- **Exportación** con vista previa: PNG, SVG, video, GLB, JSON y enlaces compartibles.
+- **Color RGB animado**, fondo, cuadrícula, zoom y encuadres horizontal, cuadrado o vertical.
+- **Accesible y responsive**, con atajos de teclado y diseño móvil.
+
+## Cómo se usa
+
+1. Abre el estudio 2D. Siempre inicia en pausa con un ejemplo ya calculado.
+2. Pulsa **Reproducir** y mueve la línea temporal o la velocidad.
+3. Cambia **Epiciclos** en el panel: pocos dan una forma suave; más conservan los detalles.
+4. Pulsa **Limpiar lienzo** y elige **Dibujar** para trazar el tuyo. Puedes levantar el lápiz y continuar; los trazos se unen en orden y se cierra el ciclo.
+5. Pulsa **+** (**Crear desde…**) para animar una ilustración, un texto, un SVG o una foto.
+6. Abre **Componer** para añadir y ajustar círculos a mano.
+7. Cambia a **Espacio 3D** para curvas espaciales, o usa **Llevar una copia a 3D** (el original se conserva).
+8. **Guardar** crea una copia local. **Exportar y compartir** ofrece imagen, video, SVG, GLB, JSON y enlace.
+
+Más detalle en la [guía de uso y aprendizaje](docs/learning.md) y en [Crear desde…](docs/creation.md).
+
+## Ejecutar en local
+
+Requiere Node 24.15.0 o una versión compatible con Angular 22.2.2 (ver `.nvmrc`).
 
 ```sh
 npm ci
 npm run start
 ```
 
-Abre http://127.0.0.1:4200/studio/2d. Para el artefacto de producción:
+Abre http://127.0.0.1:4200/studio/2d. Para el build de producción:
 
 ```sh
 npm run build
 npm run preview
 ```
-
-En esta máquina hay un Node compatible local en `.tools/node_modules/node-win-x64/bin/node.exe`; los scripts lo usan automáticamente. En una instalación nueva se usa el Node del sistema. `.tools` no forma parte del producto.
-
-## Crear
-
-- Pulsa la goma **Limpiar lienzo** de la barra izquierda para quitar la figura y escribir o dibujar desde cero. También puedes elegir un ejemplo o pulsar **Dibujar**. Puedes levantar el lápiz y continuar con varios trazos. Pulsa **Reproducir** o **Animar dibujo** para reconstruirlos; se unen por orden y se regresa por el recorrido para cerrar el ciclo. También puedes conectar los extremos con el botón de cierre.
-- Durante el dibujo, la goma permite **Limpiar y empezar de nuevo**; cancelar recupera la figura anterior. Los ejemplos seleccionados quedan resaltados.
-- Pulsa **Reproducir** y cambia componentes, velocidad o posición temporal. La app siempre abre pausada.
-- **Componer** permite añadir círculos y editar radio, frecuencia, fase y centro. En 3D también permite editar su plano y normal.
-- **Espacio 3D** ofrece curvas espaciales, cámaras y edición numérica de puntos. **Editar puntos** permite añadir en un plano y mover marcadores.
-- **Llevar una copia a 3D** conserva el original y muestra el error de reducción antes de confirmar.
-- **Guardar** crea una copia local; **Proyecto JSON** descarga la fuente editable. PNG/SVG/GLB son resultados visuales. Los enlaces pequeños contienen la creación en el fragmento de URL.
-
-[Guía de uso y aprendizaje](docs/learning.md) · [Convenciones matemáticas](docs/math-conventions.md) · [Evidencias y pendientes](docs/verification.md) · [Rendimiento](docs/performance.md) · [Publicación](docs/release.md)
-
-Capturas actuales: [escritorio](docs/screenshots/studio-desktop.png), [móvil](docs/screenshots/studio-mobile.png) y [3D](docs/screenshots/studio-3d.png). Las capturas automáticas de las pruebas se generan en `test-results/`.
 
 ## Verificación
 
@@ -45,24 +71,31 @@ node scripts/run.mjs playwright install
 npm run test:e2e
 ```
 
-La suite de navegador sirve el build real por HTTP. Chromium, Firefox y WebKit son automatizados; WebKit en Windows no demuestra Safari/iOS físico. CI está preparada; su ejecución alojada requiere publicar el repositorio.
+La suite de navegador sirve el build real; Chromium, Firefox y WebKit están automatizados. WebKit en Windows no sustituye a Safari/iOS físico.
 
-## Estructura
+## Tecnología
 
-`src/app/domain` contiene preparación, FFT, evaluación, selección, errores y validación de proyectos. `infrastructure` contiene workers, IndexedDB y transferencia. `features` contiene estado, reloj, historial, canvas, escena espacial y aprendizaje. Los tests unitarios viven junto a sus módulos; los flujos de navegador están en `tests/e2e`.
+Angular 22 (standalone, TypeScript estricto), Canvas 2D, Three.js, Web Workers, `fft.js`, IndexedDB y Zod. La matemática es pura e independiente de Angular y del render.
 
-`plan.md` contiene únicamente pendientes de validación, publicación y cierre. `docs/implementation.md` registra las decisiones y el trabajo realizado; `docs/verification.md`, las evidencias y límites de lo comprobado.
+```
+src/app/domain          Preparación de curvas, FFT, evaluación, errores y validación
+src/app/infrastructure  Workers, IndexedDB, transferencia, SVG y fotos
+src/app/features        Estado, reloj, historial, canvas, escena 3D, creador y aprendizaje
+tests/e2e               Flujos de navegador (Playwright)
+```
 
-## Subir a Cloudflare Pages
+## Publicación
 
-El ZIP listo para carga manual está en `artifacts/epicycle-studio-cloudflare-pages.zip`. También se puede subir directamente la carpeta `dist/epicycle-studio/browser`. El archivo `index.html` y las reglas `_headers` quedan en la raíz del ZIP. La subida la realiza el usuario; no requiere backend.
+Despliegue estático en Cloudflare Workers/Pages sin backend: comando `npm run build`, salida `dist/epicycle-studio/browser`. Ver [guía de publicación](docs/release.md).
 
-Para reconstruir: `npm ci` y `npm run build`. Para integración Git en Pages: comando `npm run build`, salida `dist/epicycle-studio/browser`, Node indicado en `.nvmrc`. Ver [instrucciones de publicación y comprobaciones HTTPS](docs/release.md).
+## Documentación
 
-El dibujo libre ajusta automáticamente la cantidad de epiciclos según el detalle. **Editar trazo** permite arrastrar zonas de una curva existente o del borrador actual y continuar con el lápiz; cancelar conserva el documento anterior. En **Lo que ves → Color del trazo** puedes activar **RGB animado**.
+[Aprender y crear](docs/learning.md) · [Crear desde…](docs/creation.md) · [Convenciones matemáticas](docs/math-conventions.md) · [Rendimiento](docs/performance.md) · [Dependencias](docs/dependencies.md) · [Verificación](docs/verification.md) · [Publicación](docs/release.md)
 
-El exportador tiene vista previa y opciones independientes para imagen/video: fondo oscuro por defecto, cuadrícula, zoom, grosor y encuadre horizontal, cuadrado o vertical. PNG y video incluyen RGB; SVG conserva el color base. El video se encuentra debajo de las acciones de imagen y proyecto. Los ajustes de exportación no alteran la vista del editor.
+`plan.md` contiene únicamente los pendientes de validación (rendimiento en dispositivos reales y cierre de la publicación).
 
-## Crear desde…
+## Capturas
 
-El botón **+** permite animar ilustraciones de galería, nombres/frases, contornos SVG seleccionables o fotografías convertidas localmente a líneas. Consulta [opciones, límites y arquitectura](docs/creation.md). No requiere servicios de IA.
+| Escritorio                                                                        | 3D                                                                      | Móvil                                                                              |
+| --------------------------------------------------------------------------------- | ----------------------------------------------------------------------- | ---------------------------------------------------------------------------------- |
+| [![2D](docs/screenshots/studio-desktop.png)](docs/screenshots/studio-desktop.png) | [![3D](docs/screenshots/studio-3d.png)](docs/screenshots/studio-3d.png) | [![Móvil](docs/screenshots/studio-mobile.png)](docs/screenshots/studio-mobile.png) |
