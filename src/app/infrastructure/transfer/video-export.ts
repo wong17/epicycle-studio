@@ -1,22 +1,41 @@
-export function videoMime(): string | null {
+export type VideoFormat = 'mp4' | 'webm';
+const VIDEO_MIMES: Record<VideoFormat, string[]> = {
+  mp4: [
+    'video/mp4;codecs=avc1.640028',
+    'video/mp4;codecs=avc1.42E01E',
+    'video/mp4;codecs=avc1',
+    'video/mp4;codecs=h264',
+    'video/mp4',
+  ],
+  webm: ['video/webm;codecs=vp9', 'video/webm;codecs=vp8', 'video/webm'],
+};
+export function videoMime(format?: VideoFormat): string | null {
   if (typeof MediaRecorder === 'undefined' || !HTMLCanvasElement.prototype.captureStream)
     return null;
+  const formats: VideoFormat[] = format ? [format] : ['webm', 'mp4'];
   return (
-    ['video/webm;codecs=vp9', 'video/webm;codecs=vp8', 'video/mp4', 'video/webm'].find((mime) =>
-      MediaRecorder.isTypeSupported(mime),
-    ) ?? null
+    formats.flatMap((f) => VIDEO_MIMES[f]).find((mime) => MediaRecorder.isTypeSupported(mime)) ??
+    null
   );
+}
+export function videoFormats(): VideoFormat[] {
+  return (['mp4', 'webm'] as const).filter((f) => videoMime(f) !== null);
 }
 export function recordCycle(
   canvas: HTMLCanvasElement,
   render: (phase: number) => void,
   signal: AbortSignal,
   durationMs = 8000,
+  format?: VideoFormat,
 ): Promise<Blob> {
-  const mime = videoMime();
+  const mime = videoMime(format);
   if (!mime)
     return Promise.reject(
-      new Error('Este navegador no admite grabación de video. Exporta PNG o GLB.'),
+      new Error(
+        format
+          ? `Este navegador no puede grabar ${format.toUpperCase()}. Prueba con otro formato.`
+          : 'Este navegador no admite grabación de video. Exporta PNG o GLB.',
+      ),
     );
   if (signal.aborted) return Promise.reject(new DOMException('Grabación cancelada', 'AbortError'));
   return new Promise((resolve, reject) => {

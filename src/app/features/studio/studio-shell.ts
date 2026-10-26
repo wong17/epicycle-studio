@@ -27,7 +27,12 @@ import {
   exportProjectV1,
 } from '../../domain/projects/project-schema';
 import { Vec2, Vec3 } from '../../domain/model';
-import { recordCycle, videoMime } from '../../infrastructure/transfer/video-export';
+import {
+  recordCycle,
+  videoFormats,
+  videoMime,
+  type VideoFormat,
+} from '../../infrastructure/transfer/video-export';
 import { explainError } from '../../domain/errors';
 import { prepareCurve, resampleClosedPolyline } from '../../domain/curves/prepare-curve';
 import { measureError, evaluate2D, evaluateManual3D } from '../../domain/fourier/math';
@@ -127,6 +132,17 @@ export class StudioShell implements AfterViewInit, OnDestroy {
   imageCapture = defaultCapture();
   videoCapture = defaultCapture();
   captureMode: 'image' | 'video' = 'image';
+  videoFormat: VideoFormat = videoFormats()[0] ?? 'webm';
+  readonly videoFormatOptions = [
+    { value: 'mp4', label: 'MP4 · compatible con todo', icon: 'video', badge: 'MP4' },
+    { value: 'webm', label: 'WebM · más ligero', icon: 'video', badge: 'WebM' },
+  ];
+  get availableVideoFormats(): VideoFormat[] {
+    return videoFormats();
+  }
+  setVideoFormat(value: string): void {
+    if (value === 'mp4' || value === 'webm') this.videoFormat = value;
+  }
   readonly captureBusy = signal(false);
   private captureGeneration = 0;
   @ViewChild('capturePreview', { static: true }) capturePreview!: ElementRef<HTMLCanvasElement>;
@@ -196,7 +212,7 @@ export class StudioShell implements AfterViewInit, OnDestroy {
   readonly recording = signal(false);
   private recordingAbort: AbortController | null = null;
   get videoAvailable(): boolean {
-    return videoMime() !== null && this.ready() && !this.contextLost();
+    return videoMime(this.videoFormat) !== null && this.ready() && !this.contextLost();
   }
   get visibleOrbits(): number {
     return Math.min(
@@ -1135,6 +1151,7 @@ export class StudioShell implements AfterViewInit, OnDestroy {
         (t) => recordingScene.render(t),
         abort.signal,
         8000 / p.playback.speed,
+        this.videoFormat,
       );
       download(blob, `${p.name}.${blob.type.startsWith('video/mp4') ? 'mp4' : 'webm'}`);
     } catch (error) {

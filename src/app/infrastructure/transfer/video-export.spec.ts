@@ -1,5 +1,5 @@
 import { afterEach, expect, it, vi } from 'vitest';
-import { recordCycle } from './video-export';
+import { recordCycle, videoFormats, videoMime } from './video-export';
 
 const captureDescriptor = Object.getOwnPropertyDescriptor(
   HTMLCanvasElement.prototype,
@@ -51,3 +51,16 @@ it.each(['render', 'start'] as const)(
     expect(removeVisibility).toHaveBeenCalledWith('visibilitychange', expect.any(Function));
   },
 );
+
+it('videoMimeSelectsRequestedContainer', () => {
+  vi.stubGlobal('MediaRecorder', {
+    isTypeSupported: (mime: string) => mime.startsWith('video/mp4') || mime === 'video/webm',
+  });
+  Object.defineProperty(HTMLCanvasElement.prototype, 'captureStream', {
+    configurable: true,
+    value: vi.fn(),
+  });
+  expect(videoMime('mp4')).toMatch(/^video\/mp4/);
+  expect(videoMime('webm')).toBe('video/webm');
+  expect(videoFormats()).toEqual(['mp4', 'webm']);
+});
