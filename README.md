@@ -6,7 +6,9 @@
 
 ## Video de funcionamiento
 
-[Ver la demostración en video](docs/demo.webm) · 29 segundos: reproducción 2D, galería, ajuste de epiciclos y vista 3D.
+https://github.com/user-attachments/assets/59757a50-8833-4fca-b1d9-35a358555eb1
+
+Reproducción 2D, galería, ajuste de epiciclos y vista 3D.
 
 <p align="center">
   <strong>Dibuja cualquier cosa. Mira cómo la reconstruyen cientos de círculos girando.</strong><br>
