@@ -106,10 +106,8 @@ for (const name of [
 
 @Component({
   selector: 'studio-icon',
-  template:
-    '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path [attr.d]="path" /></svg>',
-  styles:
-    ':host{display:inline-flex;width:19px;height:19px;flex-shrink:0}svg{width:100%;height:100%}',
+  templateUrl: './studio-icon.html',
+  styleUrl: './studio-icon.scss',
 })
 export class StudioIcon {
   readonly name = input('settings');

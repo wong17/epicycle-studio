@@ -267,11 +267,11 @@ test('fullViewportWorkspaceAndCollapsibleChrome', async ({ page }) => {
     await expect(exports).not.toHaveAttribute('title');
     await expect(page.getByRole('tooltip')).toHaveText('Exportar y compartir');
     await page.keyboard.press('Enter');
-    const png = page.getByRole('button', { name: 'Imagen PNG', exact: true });
+    const png = page.getByRole('button', { name: /^PNG\b/ });
     await png.hover();
     await expect(png).toBeVisible();
     await page.keyboard.press('Escape');
-    await expect(page.getByRole('button', { name: 'Imagen PNG' })).toBeHidden();
+    await expect(page.getByRole('button', { name: /^PNG\b/ })).toBeHidden();
     await expect(exports).toBeFocused();
     await page.getByRole('button', { name: 'Expandir o colapsar reproducción' }).click();
     await expect(page.getByRole('slider', { name: 'Posición en el ciclo' })).toBeHidden();

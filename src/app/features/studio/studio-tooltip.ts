@@ -14,25 +14,9 @@ import { ComponentPortal } from '@angular/cdk/portal';
 
 @Component({
   selector: 'studio-tooltip-content',
-  template: '{{ text() }}',
+  templateUrl: './studio-tooltip.html',
   host: { role: 'tooltip', '[id]': 'id()' },
-  styles: `
-    :host {
-      display: block;
-      padding: 7px 10px;
-      max-width: min(260px, calc(100vw - 16px));
-      border: 1px solid #555;
-      border-radius: 5px;
-      background: #303030;
-      color: #ededed;
-      font:
-        11px/1.5 system-ui,
-        sans-serif;
-      text-align: center;
-      overflow-wrap: anywhere;
-      pointer-events: none;
-    }
-  `,
+  styleUrl: './studio-tooltip.scss',
 })
 class TooltipContent {
   readonly text = input('');

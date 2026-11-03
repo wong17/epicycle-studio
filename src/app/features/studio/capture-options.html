@@ -1,0 +1,59 @@
+<studio-options
+  label="Fondo de exportación"
+  [options]="video() ? backgrounds : transparentBackgrounds"
+  [value]="settings().background"
+  (valueChange)="setBackground($event)"
+/>
+<label class="grid-option"
+  ><input
+    #typedControl1
+    type="checkbox"
+    [checked]="settings().grid"
+    (change)="update({ grid: typedControl1.checked })"
+  />Incluir cuadrícula</label
+>
+<studio-options
+  label="Formato del encuadre"
+  [options]="[
+    { value: 'landscape', label: 'Horizontal 16:9', icon: 'landscape' },
+    { value: 'square', label: 'Cuadrado 1:1', icon: 'square' },
+    { value: 'portrait', label: 'Vertical 9:16', icon: 'portrait' },
+  ]"
+  [value]="settings().aspect"
+  (valueChange)="setAspect($event)"
+/>
+<studio-options
+  label="Encuadre"
+  [options]="[
+    { value: 'fit', label: 'Ajustar dibujo', icon: 'fit' },
+    { value: 'current', label: 'Usar vista actual del editor', icon: 'camera' },
+  ]"
+  [value]="settings().framing"
+  (valueChange)="setFraming($event)"
+/>
+<label class="zoom-label"
+  >Zoom de exportación <span aria-hidden="true">{{ settings().zoom }}×</span>
+  <input
+    #typedControl2
+    type="range"
+    aria-label="Zoom de exportación"
+    min="0.25"
+    max="3"
+    step="0.05"
+    [value]="settings().zoom"
+    (change)="update({ zoom: +typedControl2.value })"
+  />
+</label>
+<label class="zoom-label"
+  >Grosor de líneas <span aria-hidden="true">{{ settings().lineWeight }}×</span>
+  <input
+    #typedControl3
+    type="range"
+    aria-label="Grosor de líneas"
+    min="1"
+    max="3"
+    step="0.25"
+    [value]="settings().lineWeight"
+    (change)="update({ lineWeight: +typedControl3.value })"
+  />
+</label>

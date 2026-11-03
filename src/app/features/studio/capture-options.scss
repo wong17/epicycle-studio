@@ -1,0 +1,29 @@
+:host {
+  display: grid;
+  gap: 12px;
+  padding-top: 12px;
+}
+.grid-option {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+}
+.zoom-label {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  font-size: 12px;
+  gap: 6px;
+}
+input[type='range'] {
+  width: 100%;
+  accent-color: var(--accent);
+}
+input[type='checkbox'] {
+  accent-color: var(--accent);
+}
+.zoom-label span {
+  color: var(--accent);
+  font-variant-numeric: tabular-nums;
+}

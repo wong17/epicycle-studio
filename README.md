@@ -1,14 +1,17 @@
 # Epicycle Studio
 
 <p align="center">
-  <img src="docs/screenshots/hero.png" alt="Epicycle Studio reconstruyendo un colibrí con 777 epiciclos en tiempo real" width="100%">
+  <img src="docs/screenshots/hero.png" alt="Epicycle Studio reconstruyendo un colibrí con epiciclos en la interfaz actual" width="100%">
 </p>
+
+## Video de funcionamiento
+
+[Ver la demostración en video](docs/demo.webm) · 29 segundos: reproducción 2D, galería, ajuste de epiciclos y vista 3D.
 
 <p align="center">
   <strong>Dibuja cualquier cosa. Mira cómo la reconstruyen cientos de círculos girando.</strong><br>
-  <a href="https://epicycle-studio.josuewong797.workers.dev/studio/2d">Probar en línea</a> ·
   <a href="docs/learning.md">Guía de aprendizaje</a> ·
-  <a href="docs/math-conventions.md">Matemática</a>
+  <a href="docs/creation.md">Crear desde…</a>
 </p>
 
 ## ¿Para qué sirve?
@@ -18,8 +21,6 @@ Epicycle Studio es un laboratorio gráfico que usa la **transformada de Fourier*
 - **Aprender:** ver de forma directa qué es una serie de Fourier, qué aporta cada frecuencia y cómo cambia el error al usar más o menos círculos.
 - **Crear:** convertir un dibujo a mano, un nombre, un SVG o una fotografía en una animación de epiciclos.
 - **Exportar:** guardar PNG, SVG, video, proyecto JSON o una escultura 3D en GLB.
-
-Todo se ejecuta en tu navegador: sin backend, sin cuentas y sin servicios de IA. Tus proyectos se guardan localmente y las fotos nunca salen de tu equipo.
 
 ## Características
 
@@ -84,15 +85,9 @@ src/app/features        Estado, reloj, historial, canvas, escena 3D, creador y a
 tests/e2e               Flujos de navegador (Playwright)
 ```
 
-## Publicación
-
-Despliegue estático en Cloudflare Workers/Pages sin backend: comando `npm run build`, salida `dist/epicycle-studio/browser`. Ver [guía de publicación](docs/release.md).
-
 ## Documentación
 
-[Aprender y crear](docs/learning.md) · [Crear desde…](docs/creation.md) · [Convenciones matemáticas](docs/math-conventions.md) · [Rendimiento](docs/performance.md) · [Dependencias](docs/dependencies.md) · [Verificación](docs/verification.md) · [Publicación](docs/release.md)
-
-`plan.md` contiene únicamente los pendientes de validación (rendimiento en dispositivos reales y cierre de la publicación).
+[Aprender y crear](docs/learning.md) · [Crear desde…](docs/creation.md)
 
 ## Capturas
 

@@ -1,0 +1,92 @@
+:host {
+  display: block;
+  background: #151515;
+  color: #ededed;
+  min-height: 100vh;
+}
+main {
+  max-width: 1000px;
+  margin: auto;
+  padding: 38px 24px 80px;
+}
+a {
+  color: #d4f477;
+  text-decoration: none;
+  font-size: 13px;
+}
+.eyebrow {
+  display: block;
+  font-size: 10px;
+  letter-spacing: 3px;
+  color: #adadad;
+  margin-top: 70px;
+}
+h1 {
+  font: clamp(46px, 8vw, 88px)/1.05 Georgia;
+  letter-spacing: -2px;
+  margin: 22px 0;
+}
+.intro {
+  max-width: 570px;
+  font-size: 18px;
+  line-height: 1.7;
+  color: #adadad;
+}
+canvas {
+  width: 100%;
+  height: 340px;
+  display: block;
+  background: #222222;
+  border: 1px solid #3b3b3b;
+  border-radius: 10px;
+  margin: 35px 0;
+}
+label {
+  display: block;
+  font-size: 13px;
+  color: #adadad;
+  margin: 18px 0;
+}
+input {
+  display: block;
+  width: 100%;
+  max-width: 500px;
+  margin-top: 10px;
+}
+.lessons {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 35px;
+  margin-top: 60px;
+}
+article {
+  border-top: 1px solid #3b3b3b;
+  padding-top: 24px;
+}
+article b {
+  font: 11px Consolas;
+  color: #d4f477;
+}
+h2 {
+  font: 25px Georgia;
+}
+article p {
+  font-size: 14px;
+  line-height: 1.8;
+  color: #adadad;
+}
+.cta {
+  display: inline-block;
+  margin-top: 45px;
+  padding: 15px 22px;
+  border: 1px solid #d4f477;
+  border-radius: 6px;
+}
+@media (max-width: 600px) {
+  .lessons {
+    grid-template-columns: 1fr;
+  }
+  canvas {
+    height: 260px;
+  }
+}

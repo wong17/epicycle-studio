@@ -4,7 +4,7 @@
   "scripts": {
     "ng": "ng",
     "start": "node scripts/run.mjs ng serve --host 127.0.0.1",
-    "build": "node scripts/run.mjs scripts/prepare-pages.mjs",
+    "build": "node scripts/run.mjs scripts/build.mjs",
     "watch": "ng build --watch --configuration development",
     "test": "node scripts/run.mjs ng test",
     "test:ci": "node scripts/run.mjs ng test --no-watch --no-progress",

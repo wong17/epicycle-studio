@@ -1,5 +1,6 @@
 import {
   readFileSync,
+  mkdirSync,
   writeFileSync,
   readdirSync,
   mkdtempSync,
@@ -11,13 +12,14 @@ import { join } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { gzipSync } from 'node:zlib';
 import { build } from 'esbuild';
+mkdirSync('artifacts/measurements', { recursive: true });
 const pkg = JSON.parse(readFileSync('package.json', 'utf8'));
 const rows = Object.entries({ ...pkg.dependencies, ...pkg.devDependencies }).map(([name]) => {
   const p = JSON.parse(readFileSync(`node_modules/${name}/package.json`, 'utf8'));
   return `| ${name} | ${p.version} | ${typeof p.license === 'string' ? p.license : JSON.stringify(p.license)} | [npm](https://www.npmjs.com/package/${name}) |`;
 });
 writeFileSync(
-  'docs/dependencies.md',
+  'artifacts/measurements/dependencies.md',
   `# Dependencias resueltas\n\nNode de ejecución: 24.15.0 local; Angular: 22.2.2. Versiones y licencias leídas de los manifiestos instalados. package-lock.json conserva la resolución exacta; usar npm ci.\n\n| Paquete | Versión | Licencia declarada | Fuente |\n|---|---|---|---|\n${rows.join('\n')}\n\nfft.js es CommonJS: sólo este paquete se permite explícitamente en el build. La matemática usa doble precisión; Three.js convierte geometría a Float32. Ningún recurso gráfico externo es necesario. El CLI genera Vitest 5.0.4 y TypeScript compatible; no se sustituyó su runner.\n`,
 );
 const files = readdirSync('dist/epicycle-studio/browser')
@@ -58,7 +60,7 @@ for (let i = 0; i < 25; i++) {
 }
 timing.sort((a, b) => a - b);
 writeFileSync(
-  'docs/bundle-measured.json',
+  'artifacts/measurements/bundle-measured.json',
   JSON.stringify(
     {
       files,
